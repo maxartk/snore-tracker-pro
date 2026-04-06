@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:record/record.dart';
+import 'package:mic_stream/mic_stream.dart';
 
 void main() {
   runApp(const SnoreCostApp());
@@ -35,86 +35,76 @@ class SnoreCostPage extends StatefulWidget {
 }
 
 class _SnoreCostPageState extends State<SnoreCostPage> {
-  final RecordAudio _recordAudio = RecordAudio();
   bool _isRecording = false;
   double _snoreLevel = 0.0;
   int _snoreCount = 0;
-  double _damagePerSnore = 100.0; // 100 гривень за храп
+  double _damagePerSnore = 100.0;
   double _totalDamage = 0.0;
   final List<double> _volumeHistory = [];
   Timer? _historyTimer;
-  Timer? _snoreTimer;
+  Timer? _streamTimer;
+  final MicStream _micStream = MicStream();
 
   // Пороги для детекції храпу
-  final double _snoreThreshold = 0.25; // 25% від максимального
-  final int _snoreDurationSeconds = 3; // тривалість храпу в секундах
+  final double _snoreThreshold = 0.25;
+  final int _snoreDurationSeconds = 3;
 
   // Логіка детекції
   bool _snoreInProgress = false;
   DateTime? _snoreStartTime;
-  final List<double> _calibrationSamples = [];
   double _backgroundLevel = 0.0;
   int _calibrationCount = 0;
+  final List<double> _calibrationSamples = [];
 
   @override
   void initState() {
     super.initState();
     _historyTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
       if (_isRecording) {
-        _updateAudioLevel();
-      }
-      setState(() {});
-    });
-
-    // Оновлення графіка кожні 0.5 секунди
-    Timer.periodic(const Duration(milliseconds: 500), (timer) {
-      if (_volumeHistory.length > 60) {
-        _volumeHistory.removeRange(0, _volumeHistory.length - 60);
+        setState(() {});
       }
     });
   }
 
-  void _updateAudioLevel() async {
-    try {
-      final level = await _recordAudio.getCurrentLevel();
-      final amplitude = level.amplitude ?? 0.0;
+  @override
+  void dispose() {
+    _historyTimer?.cancel();
+    _streamTimer?.cancel();
+    _micStream.dispose();
+    super.dispose();
+  }
 
-      // Нормалізація (предполагаем максимум 1.0)
-      final normalizedLevel = amplitude.clamp(0.0, 1.0);
+  void _updateAudioLevel(double level) {
+    // Нормалізація (припускаємо максимум ~1.0)
+    final normalizedLevel = (level.abs() / 32768.0).clamp(0.0, 1.0);
 
-      if (_calibrationCount < 30) {
-        // Калібрування фону перші 3 секунди (30 * 100мс)
-        _calibrationSamples.add(normalizedLevel);
-        _calibrationCount++;
-        if (_calibrationCount == 30) {
-          _backgroundLevel = _calibrationSamples.reduce((a, b) => a > b ? a : b);
-        }
+    if (_calibrationCount < 30) {
+      // Калібрування фону
+      _calibrationSamples.add(normalizedLevel);
+      _calibrationCount++;
+      if (_calibrationCount == 30) {
+        _backgroundLevel = _calibrationSamples.reduce((a, b) => a > b ? a : b);
       }
+    }
 
-      // Видаляємо фоновий шум
-      final adjustedLevel = max(0.0, normalizedLevel - _backgroundLevel);
-      _snoreLevel = adjustedLevel;
+    // Видаляємо фоновий шум
+    final adjustedLevel = (normalizedLevel - _backgroundLevel).clamp(0.0, 1.0);
+    _snoreLevel = adjustedLevel;
 
-      // Обмежуємо рівень для відображення
-      final displayLevel = adjustedLevel.clamp(0.0, 1.0);
-      _volumeHistory.add(displayLevel);
+    final displayLevel = adjustedLevel.clamp(0.0, 1.0);
+    _volumeHistory.add(displayLevel);
 
-      // Детекція храпу
-      if (!_snoreInProgress && displayLevel > _snoreThreshold) {
-        _snoreStartTime = DateTime.now();
-        _snoreInProgress = true;
-      } else if (_snoreInProgress) {
-        final duration = DateTime.now().difference(_snoreStartTime!);
-        if (duration.inMilliseconds >= _snoreDurationSeconds * 1000) {
-          // Храп підтверджений
-          _completeSnore();
-        } else if (displayLevel <= _snoreThreshold * 0.5) {
-          // Храп зупинився рано
-          _snoreInProgress = false;
-        }
+    // Детекція храпу
+    if (!_snoreInProgress && displayLevel > _snoreThreshold) {
+      _snoreStartTime = DateTime.now();
+      _snoreInProgress = true;
+    } else if (_snoreInProgress) {
+      final duration = DateTime.now().difference(_snoreStartTime!);
+      if (duration.inMilliseconds >= _snoreDurationSeconds * 1000) {
+        _completeSnore();
+      } else if (displayLevel <= _snoreThreshold * 0.5) {
+        _snoreInProgress = false;
       }
-    } catch (e) {
-      debugPrint('Error getting audio level: $e');
     }
   }
 
@@ -125,41 +115,43 @@ class _SnoreCostPageState extends State<SnoreCostPage> {
     _snoreStartTime = null;
   }
 
-  @override
-  void dispose() {
-    _historyTimer?.cancel();
-    _snoreTimer?.cancel();
-    _recordAudio.dispose();
-    super.dispose();
-  }
-
   Future<void> _startRecording() async {
-    if (!await _recordAudio.hasPermission()) {
+    try {
+      await _micStream.startMicStream((level) {
+        if (mounted) {
+          _updateAudioLevel(level);
+        }
+      });
+      setState(() {
+        _isRecording = true;
+        _snoreCount = 0;
+        _totalDamage = 0.0;
+        _volumeHistory.clear();
+        _calibrationCount = 0;
+        _calibrationSamples.clear();
+        _backgroundLevel = 0.0;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Потрібен доступ до мікрофону')),
+        const SnackBar(content: Text('Запис аудіо запущено. Калібрування...')),
       );
-      return;
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Помилка: $e')),
+      );
     }
-    await _recordAudio.start();
-    setState(() {
-      _isRecording = true;
-      _snoreCount = 0;
-      _totalDamage = 0.0;
-      _volumeHistory.clear();
-      _calibrationCount = 0;
-      _calibrationSamples.clear();
-      _backgroundLevel = 0.0;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Запис аудіо запущено. Калібрування...')),
-    );
   }
 
   Future<void> _stopRecording() async {
-    await _recordAudio.stop();
-    setState(() {
-      _isRecording = false;
-    });
+    try {
+      await _micStream.stop();
+      setState(() {
+        _isRecording = false;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Помилка: $e')),
+      );
+    }
   }
 
   void _resetStats() {
@@ -431,8 +423,7 @@ class VolumeGraphPainter extends CustomPainter {
     final thresholdPaint = Paint()
       ..color = Colors.redAccent.withOpacity(0.3)
       ..strokeWidth = 1
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+      ..style = PaintingStyle.stroke;
 
     final path = Path();
     final stepX = size.width / (data.length - 1);
