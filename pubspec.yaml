@@ -34,15 +34,9 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  record: ^5.1.2
+  record: ^5.2.1
   flutter_localizations:
     sdk: flutter
-
-dependency_overrides:
-  record_linux:
-    git:
-      url: https://github.com/obye/record.git
-      path: packages/record_linux
 
 dev_dependencies:
   flutter_test:
