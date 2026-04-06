@@ -42,8 +42,7 @@ class _SnoreCostPageState extends State<SnoreCostPage> {
   double _totalDamage = 0.0;
   final List<double> _volumeHistory = [];
   Timer? _historyTimer;
-  Timer? _streamTimer;
-  final MicStream _micStream = MicStream();
+  StreamSubscription<List<int>>? _micSubscription;
 
   // Пороги для детекції храпу
   final double _snoreThreshold = 0.25;
@@ -69,17 +68,25 @@ class _SnoreCostPageState extends State<SnoreCostPage> {
   @override
   void dispose() {
     _historyTimer?.cancel();
-    _streamTimer?.cancel();
-    _micStream.dispose();
+    _micSubscription?.cancel();
     super.dispose();
   }
 
-  void _updateAudioLevel(double level) {
-    // Нормалізація (припускаємо максимум ~1.0)
-    final normalizedLevel = (level.abs() / 32768.0).clamp(0.0, 1.0);
+  void _updateAudioLevel(List<int> samples) {
+    if (samples.isEmpty) return;
+
+    // Обчислюємо RMS амплітуду
+    double sum = 0;
+    for (int sample in samples) {
+      sum += sample * sample;
+    }
+    final rms = sqrt(sum / samples.length);
+
+    // Нормалізація (припускаємо максимум ~32768 для 16-bit)
+    final normalizedLevel = (rms / 32768.0).clamp(0.0, 1.0);
 
     if (_calibrationCount < 30) {
-      // Калібрування фону
+      // Калібрування фону (30 * 100мс = 3 сек)
       _calibrationSamples.add(normalizedLevel);
       _calibrationCount++;
       if (_calibrationCount == 30) {
@@ -94,7 +101,7 @@ class _SnoreCostPageState extends State<SnoreCostPage> {
     final displayLevel = adjustedLevel.clamp(0.0, 1.0);
     _volumeHistory.add(displayLevel);
 
-    // Детекція храпу
+    // Детекція храпу: 5 послідовних перевищень порогу
     if (!_snoreInProgress && displayLevel > _snoreThreshold) {
       _snoreStartTime = DateTime.now();
       _snoreInProgress = true;
@@ -117,11 +124,12 @@ class _SnoreCostPageState extends State<SnoreCostPage> {
 
   Future<void> _startRecording() async {
     try {
-      await _micStream.startMicStream((level) {
-        if (mounted) {
-          _updateAudioLevel(level);
-        }
-      });
+      //叨叨叨дзвінок до дозволу
+      await MicStream.shouldRequestPermission(true);
+      
+      final stream = await MicStream.microphone(sampleRate: 16000);
+      _micSubscription = stream.listen(_updateAudioLevel, cancelOnError: true);
+      
       setState(() {
         _isRecording = true;
         _snoreCount = 0;
@@ -143,7 +151,8 @@ class _SnoreCostPageState extends State<SnoreCostPage> {
 
   Future<void> _stopRecording() async {
     try {
-      await _micStream.stop();
+      await _micSubscription?.cancel();
+      _micSubscription = null;
       setState(() {
         _isRecording = false;
       });
