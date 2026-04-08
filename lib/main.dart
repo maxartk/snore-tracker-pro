@@ -14,13 +14,20 @@ class SnoreCostApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'ХрапОмстр - Вартість храпу',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        fontFamily: 'Roboto',
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF0D1117),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blueGrey,
+          seedColor: const Color(0xFF6366F1),
           brightness: Brightness.dark,
+          surface: const Color(0xFF161B22),
+          primary: const Color(0xFF6366F1),
+          secondary: const Color(0xFF10B981),
+          error: const Color(0xFFEF4444),
         ),
+        fontFamily: 'SF Pro Display',
       ),
       home: const SnoreCostPage(),
     );
@@ -34,7 +41,8 @@ class SnoreCostPage extends StatefulWidget {
   State<SnoreCostPage> createState() => _SnoreCostPageState();
 }
 
-class _SnoreCostPageState extends State<SnoreCostPage> {
+class _SnoreCostPageState extends State<SnoreCostPage>
+    with TickerProviderStateMixin {
   bool _isRecording = false;
   double _snoreLevel = 0.0;
   int _snoreCount = 0;
@@ -43,6 +51,12 @@ class _SnoreCostPageState extends State<SnoreCostPage> {
   final List<double> _volumeHistory = [];
   Timer? _historyTimer;
   StreamSubscription<List<int>>? _micSubscription;
+
+  // Animation controllers
+  late AnimationController _pulseController;
+  late AnimationController _bounceController;
+  late Animation<double> _pulseAnimation;
+  late Animation<double> _bounceAnimation;
 
   // Пороги для детекції храпу
   final double _snoreThreshold = 0.25;
@@ -58,6 +72,27 @@ class _SnoreCostPageState extends State<SnoreCostPage> {
   @override
   void initState() {
     super.initState();
+
+    // Pulse animation for record button
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    // Bounce animation for snore counter
+    _bounceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+
+    _bounceAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
+      CurvedAnimation(parent: _bounceController, curve: Curves.elasticOut),
+    );
+
     _historyTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
       if (_isRecording) {
         setState(() {});
@@ -69,24 +104,22 @@ class _SnoreCostPageState extends State<SnoreCostPage> {
   void dispose() {
     _historyTimer?.cancel();
     _micSubscription?.cancel();
+    _pulseController.dispose();
+    _bounceController.dispose();
     super.dispose();
   }
 
   void _updateAudioLevel(List<int> samples) {
     if (samples.isEmpty) return;
 
-    // Обчислюємо RMS амплітуду
     double sum = 0;
     for (int sample in samples) {
       sum += sample * sample;
     }
     final rms = sqrt(sum / samples.length);
-
-    // Нормалізація (припускаємо максимум ~32768 для 16-bit)
     final normalizedLevel = (rms / 32768.0).clamp(0.0, 1.0);
 
     if (_calibrationCount < 30) {
-      // Калібрування фону (30 * 100мс = 3 сек)
       _calibrationSamples.add(normalizedLevel);
       _calibrationCount++;
       if (_calibrationCount == 30) {
@@ -94,14 +127,12 @@ class _SnoreCostPageState extends State<SnoreCostPage> {
       }
     }
 
-    // Видаляємо фоновий шум
     final adjustedLevel = (normalizedLevel - _backgroundLevel).clamp(0.0, 1.0);
     _snoreLevel = adjustedLevel;
 
     final displayLevel = adjustedLevel.clamp(0.0, 1.0);
     _volumeHistory.add(displayLevel);
 
-    // Детекція храпу: 5 послідовних перевищень порогу
     if (!_snoreInProgress && displayLevel > _snoreThreshold) {
       _snoreStartTime = DateTime.now();
       _snoreInProgress = true;
@@ -116,20 +147,21 @@ class _SnoreCostPageState extends State<SnoreCostPage> {
   }
 
   void _completeSnore() {
-    _snoreCount++;
-    _totalDamage += _damagePerSnore;
+    setState(() {
+      _snoreCount++;
+      _totalDamage += _damagePerSnore;
+    });
     _snoreInProgress = false;
     _snoreStartTime = null;
+    _bounceController.forward().then((_) => _bounceController.reverse());
   }
 
   Future<void> _startRecording() async {
     try {
-      //叨叨叨дзвінок до дозволу
       await MicStream.shouldRequestPermission(true);
-      
       final stream = await MicStream.microphone(sampleRate: 16000);
       _micSubscription = stream.listen(_updateAudioLevel, cancelOnError: true);
-      
+
       setState(() {
         _isRecording = true;
         _snoreCount = 0;
@@ -139,13 +171,30 @@ class _SnoreCostPageState extends State<SnoreCostPage> {
         _calibrationSamples.clear();
         _backgroundLevel = 0.0;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Запис аудіо запущено. Калібрування...')),
-      );
+
+      _pulseController.repeat(reverse: true);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Запис аудіо запущено. Калібрування...'),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Помилка: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Помилка: $e'),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -153,13 +202,21 @@ class _SnoreCostPageState extends State<SnoreCostPage> {
     try {
       await _micSubscription?.cancel();
       _micSubscription = null;
+      _pulseController.stop();
+      _pulseController.value = 1.0;
       setState(() {
         _isRecording = false;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Помилка: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Помилка: $e'),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -175,241 +232,526 @@ class _SnoreCostPageState extends State<SnoreCostPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('ХрапОмстр'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _resetStats,
-            tooltip: 'Скинути статистику',
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF0D1117),
+              Color(0xFF161B22),
+              Color(0xFF1C2128),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              children: [
+                _buildHeader(),
+                const SizedBox(height: 24),
+                _buildSnoreCounter(),
+                const SizedBox(height: 24),
+                _buildDamageCard(),
+                const SizedBox(height: 24),
+                Expanded(child: _buildGraph()),
+                _buildControls(),
+                const SizedBox(height: 16),
+                _buildInfoPanel(),
+                const SizedBox(height: 16),
+                _buildCalibrationBar(),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'ХрапОмстр',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _isRecording ? 'Активний запис' : 'Готовий до роботи',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: _isRecording
+                      ? const Color(0xFF10B981)
+                      : Colors.white.withOpacity(0.5),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          _buildGlassIconBtn(
+            icon: Icons.refresh_rounded,
+            onTap: _resetStats,
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Лічильник храпів
-            Container(
-              width: 150,
-              height: 150,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _snoreCount > 0
-                    ? Colors.redAccent.withOpacity(0.2)
-                    : Colors.blueGrey.withOpacity(0.2),
-                border: Border.all(
-                  color: _snoreCount > 0
-                      ? Colors.redAccent
-                      : Colors.blueGrey,
-                  width: 3,
-                ),
-              ),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Храпи',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _snoreCount.toString(),
-                      style: TextStyle(
-                        fontSize: 48,
-                        fontWeight: FontWeight.bold,
-                        color: _snoreCount > 0
-                            ? Colors.redAccent
-                            : Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 32),
+    );
+  }
 
-            // Вартість шкоди
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.redAccent.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Colors.redAccent.withOpacity(0.3),
-                ),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    'Шкода Вікторії',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.redAccent,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '₴${_totalDamage.toStringAsFixed(0)}',
-                    style: TextStyle(
-                      fontSize: 42,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.redAccent,
-                    ),
-                  ),
-                  Text(
-                    '($_damagePerSnore ₴ за храп)',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.redAccent.withOpacity(0.7),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
+  Widget _buildGlassIconBtn({required IconData icon, required VoidCallback onTap}) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        color: Colors.white.withOpacity(0.08),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: IconButton(
+        icon: Icon(icon, color: Colors.white.withOpacity(0.8)),
+        onPressed: onTap,
+      ),
+    );
+  }
 
-            // Графік гучності
-            Expanded(
-              child: Stack(
-                children: [
-                  if (_volumeHistory.isEmpty && !_isRecording)
-                    Center(
-                      child: Text(
-                        'Увімкни запис аудіо для старту',
-                        style: TextStyle(
-                          color: Colors.grey.withOpacity(0.5),
-                        ),
-                      ),
-                    ),
-                  if (_volumeHistory.isNotEmpty || _isRecording)
-                    CustomPaint(
-                      painter: VolumeGraphPainter(_volumeHistory),
-                    ),
-                ],
-              ),
+  Widget _buildSnoreCounter() {
+    return ScaleTransition(
+      scale: _bounceAnimation,
+      child: Container(
+        width: 180,
+        height: 180,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [
+              _snoreCount > 0
+                  ? const Color(0xFFEF4444).withOpacity(0.3)
+                  : const Color(0xFF6366F1).withOpacity(0.2),
+              _snoreCount > 0
+                  ? const Color(0xFFEF4444).withOpacity(0.05)
+                  : const Color(0xFF6366F1).withOpacity(0.05),
+            ],
+          ),
+          border: Border.all(
+            color: _snoreCount > 0
+                ? const Color(0xFFEF4444).withOpacity(0.6)
+                : const Color(0xFF6366F1).withOpacity(0.4),
+            width: 2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: (_snoreCount > 0
+                      ? const Color(0xFFEF4444)
+                      : const Color(0xFF6366F1))
+                  .withOpacity(0.3),
+              blurRadius: 24,
+              spreadRadius: _snoreCount > 0 ? 2 : 0,
             ),
-            const SizedBox(height: 24),
-
-            // Кнопка запису
-            ElevatedButton(
-              onPressed: _isRecording ? _stopRecording : _startRecording,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _isRecording ? Colors.red : Colors.green,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Text(
-                _isRecording ? 'Зупинити запис' : 'Увімкнути запис',
-                style: const TextStyle(fontSize: 18),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Інфо панель
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.blueGrey.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  Column(
-                    children: [
-                      Text(
-                        'Рівень храпу',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      Text(
-                        '${(_snoreLevel * 100).toInt()}%',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: _snoreLevel > _snoreThreshold
-                              ? Colors.redAccent
-                              : Colors.green,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Column(
-                    children: [
-                      Text(
-                        'Лінія шкоди',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      Text(
-                        '₴${_damagePerSnore}',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Калібрування
-            if (_calibrationCount > 0 && _calibrationCount < 30)
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.yellow.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.sync, color: Colors.yellow),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Калібрування фону...',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.yellow[700],
-                            ),
-                          ),
-                          SizedBox(
-                            width: double.infinity,
-                            child: LinearProgressIndicator(
-                              value: _calibrationCount / 30,
-                              backgroundColor: Colors.yellow[100],
-                              color: Colors.yellow[700],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
           ],
         ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'ХРАПИ',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withOpacity(0.6),
+                  letterSpacing: 2,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _snoreCount.toString(),
+                style: TextStyle(
+                  fontSize: 56,
+                  fontWeight: FontWeight.bold,
+                  color: _snoreCount > 0
+                      ? const Color(0xFFEF4444)
+                      : Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDamageCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFFEF4444).withOpacity(0.2),
+            const Color(0xFFEF4444).withOpacity(0.08),
+          ],
+        ),
+        border: Border.all(
+          color: const Color(0xFFEF4444).withOpacity(0.3),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFEF4444).withOpacity(0.15),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.favorite_rounded,
+                color: const Color(0xFFEF4444).withOpacity(0.8),
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'ШКОДА ВІКТОРІЇ',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFFEF4444).withOpacity(0.9),
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '₴${_totalDamage.toStringAsFixed(0)}',
+            style: const TextStyle(
+              fontSize: 52,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFFEF4444),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: Colors.white.withOpacity(0.08),
+            ),
+            child: Text(
+              '${_damagePerSnore.toInt()} ₴ за храп',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.white.withOpacity(0.6),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGraph() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: Colors.white.withOpacity(0.03),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFF10B981),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Рівень аудіо',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white.withOpacity(0.5),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: _snoreLevel > _snoreThreshold
+                      ? const Color(0xFFEF4444).withOpacity(0.2)
+                      : const Color(0xFF10B981).withOpacity(0.2),
+                ),
+                child: Text(
+                  '${(_snoreLevel * 100).toInt()}%',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: _snoreLevel > _snoreThreshold
+                        ? const Color(0xFFEF4444)
+                        : const Color(0xFF10B981),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: _volumeHistory.isEmpty && !_isRecording
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.mic_none_rounded,
+                          size: 48,
+                          color: Colors.white.withOpacity(0.15),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Увімкни запис аудіо для старту',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white.withOpacity(0.3),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : CustomPaint(
+                    painter: VolumeGraphPainter(
+                      _volumeHistory,
+                      _snoreThreshold,
+                      _snoreLevel > _snoreThreshold,
+                    ),
+                    size: Size.infinite,
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildControls() {
+    return AnimatedBuilder(
+      animation: _pulseAnimation,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _isRecording ? _pulseAnimation.value : 1.0,
+          child: child,
+        );
+      },
+      child: GestureDetector(
+        onTap: _isRecording ? _stopRecording : _startRecording,
+        child: Container(
+          width: double.infinity,
+          height: 60,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            gradient: LinearGradient(
+              colors: _isRecording
+                  ? [
+                      const Color(0xFFEF4444),
+                      const Color(0xFFDC2626),
+                    ]
+                  : [
+                      const Color(0xFF10B981),
+                      const Color(0xFF059669),
+                    ],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: (_isRecording
+                        ? const Color(0xFFEF4444)
+                        : const Color(0xFF10B981))
+                    .withOpacity(0.4),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                _isRecording ? Icons.stop_rounded : Icons.mic_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                _isRecording ? 'ЗУПИНИТИ ЗАПИС' : 'УВІМКНУТИ ЗАПИС',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoPanel() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: Colors.white.withOpacity(0.05),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildInfoItem(
+            'Поріг детекції',
+            '${(_snoreThreshold * 100).toInt()}%',
+            Icons.signal_cellular_alt,
+            const Color(0xFF6366F1),
+          ),
+          Container(
+            width: 1,
+            height: 40,
+            color: Colors.white.withOpacity(0.1),
+          ),
+          _buildInfoItem(
+            'Лінія шкоди',
+            '₴${_damagePerSnore.toInt()}',
+            Icons.attach_money,
+            const Color(0xFFEF4444),
+          ),
+          Container(
+            width: 1,
+            height: 40,
+            color: Colors.white.withOpacity(0.1),
+          ),
+          _buildInfoItem(
+            'Тривалість',
+            '${_snoreDurationSeconds}с',
+            Icons.timer_outlined,
+            const Color(0xFF10B981),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoItem(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 14, color: color.withOpacity(0.8)),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.white.withOpacity(0.5),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCalibrationBar() {
+    if (_calibrationCount == 0 || _calibrationCount >= 30) {
+      return const SizedBox(height: 48);
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: const Color(0xFFF59E0B).withOpacity(0.1),
+        border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.2)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.sync, color: Color(0xFFF59E0B), size: 18),
+              const SizedBox(width: 8),
+              Text(
+                'Калібрування фону...',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: const Color(0xFFF59E0B).withOpacity(0.9),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${((_calibrationCount / 30) * 100).toInt()}%',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFFF59E0B),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: _calibrationCount / 30,
+              backgroundColor: const Color(0xFFF59E0B).withOpacity(0.2),
+              color: const Color(0xFFF59E0B),
+              minHeight: 6,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -417,48 +759,99 @@ class _SnoreCostPageState extends State<SnoreCostPage> {
 
 class VolumeGraphPainter extends CustomPainter {
   final List<double> data;
+  final double threshold;
+  final bool isSnoring;
 
-  VolumeGraphPainter(this.data);
+  VolumeGraphPainter(this.data, this.threshold, this.isSnoring);
 
   @override
   void paint(Canvas canvas, Size size) {
     if (data.isEmpty) return;
 
-    final paint = Paint()
-      ..color = Colors.green
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
+    final stepX = size.width / (data.length.clamp(1, 200));
 
-    final thresholdPaint = Paint()
-      ..color = Colors.redAccent.withOpacity(0.3)
-      ..strokeWidth = 1
-      ..style = PaintingStyle.stroke;
+    // Gradient fill under the line
+    final fillPath = Path();
+    fillPath.moveTo(0, size.height);
 
-    final path = Path();
-    final stepX = size.width / (data.length - 1);
-
-    for (int i = 0; i < data.length; i++) {
+    for (int i = 0; i < data.length.clamp(0, 200); i++) {
       final x = i * stepX;
-      final y = size.height - (data[i] * size.height);
-
+      final y = size.height - (data[i] * size.height * 0.9);
       if (i == 0) {
-        path.moveTo(x, y);
+        fillPath.lineTo(x, y);
       } else {
-        path.lineTo(x, y);
+        fillPath.lineTo(x, y);
       }
     }
 
-    canvas.drawPath(path, paint);
+    fillPath.lineTo(data.length.clamp(0, 200) * stepX, size.height);
+    fillPath.close();
 
-    // Малюємо лінію порогу
-    final thresholdY = size.height * (1 - 0.25);
+    final fillPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          (isSnoring ? const Color(0xFFEF4444) : const Color(0xFF10B981))
+              .withOpacity(0.3),
+          (isSnoring ? const Color(0xFFEF4444) : const Color(0xFF10B981))
+              .withOpacity(0.0),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    canvas.drawPath(fillPath, fillPaint);
+
+    // Main line
+    final linePath = Path();
+    for (int i = 0; i < data.length.clamp(0, 200); i++) {
+      final x = i * stepX;
+      final y = size.height - (data[i] * size.height * 0.9);
+
+      if (i == 0) {
+        linePath.moveTo(x, y);
+      } else {
+        linePath.lineTo(x, y);
+      }
+    }
+
+    final linePaint = Paint()
+      ..color = isSnoring ? const Color(0xFFEF4444) : const Color(0xFF10B981)
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    canvas.drawPath(linePath, linePaint);
+
+    // Threshold line (glowing)
+    final thresholdY = size.height * (1 - threshold * 0.9);
+    final thresholdPaint = Paint()
+      ..color = const Color(0xFFEF4444).withOpacity(0.4)
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+
     canvas.drawLine(
       Offset(0, thresholdY),
       Offset(size.width, thresholdY),
       thresholdPaint,
     );
+
+    // Glow effect for threshold
+    final glowPaint = Paint()
+      ..color = const Color(0xFFEF4444).withOpacity(0.15)
+      ..strokeWidth = 4
+      ..style = PaintingStyle.stroke
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+
+    canvas.drawLine(
+      Offset(0, thresholdY),
+      Offset(size.width, thresholdY),
+      glowPaint,
+    );
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant VolumeGraphPainter oldDelegate) {
+    return true;
+  }
 }
