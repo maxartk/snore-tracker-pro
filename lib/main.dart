@@ -53,7 +53,6 @@ class _SnoreCostPageState extends State<SnoreCostPage>
   StreamSubscription<dynamic>? _micSubscription;
   AudioRecorder? _recorder;
 
-  // Animation controllers
   late AnimationController _pulseController;
   late AnimationController _bounceController;
   late Animation<double> _pulseAnimation;
@@ -63,7 +62,6 @@ class _SnoreCostPageState extends State<SnoreCostPage>
   double _snoreThreshold = 0.15;
   int _snoreDurationSeconds = 2;
 
-  // Логіка детекції
   bool _snoreInProgress = false;
   DateTime? _snoreStartTime;
   double _backgroundLevel = 0.0;
@@ -300,51 +298,71 @@ class _SnoreCostPageState extends State<SnoreCostPage>
             const SizedBox(height: 24),
             
             // Чутливість
-            _buildSliderSetting(
+            _buildStepperSetting(
               label: 'Чутливість',
-              subtitle: 'Поріг детекції храпу (менше = чутливіше)',
-              value: _snoreThreshold,
-              min: 0.05,
-              max: 0.50,
-              divisions: 9,
-              valueText: '${(_snoreThreshold * 100).toInt()}%',
+              subtitle: 'Поріг детекції (менше = чутливіше)',
+              value: '${(_snoreThreshold * 100).toInt()}%',
               icon: Icons.tune,
               iconColor: const Color(0xFF6366F1),
-              onChanged: (v) => setState(() => _snoreThreshold = v),
+              onDecrement: () {
+                if (_snoreThreshold > 0.05) {
+                  setState(() => _snoreThreshold = double.parse((_snoreThreshold - 0.05).toStringAsFixed(2)));
+                }
+              },
+              onIncrement: () {
+                if (_snoreThreshold < 0.50) {
+                  setState(() => _snoreThreshold = double.parse((_snoreThreshold + 0.05).toStringAsFixed(2)));
+                }
+              },
+              canDecrement: _snoreThreshold > 0.05,
+              canIncrement: _snoreThreshold < 0.50,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // Ціна за храп
-            _buildSliderSetting(
+            _buildStepperSetting(
               label: 'Ціна за храп',
-              subtitle: 'Скільки коштує один храп Вікторії',
-              value: _damagePerSnore,
-              min: 10,
-              max: 500,
-              divisions: 10,
-              valueText: '${_damagePerSnore.toInt()} ₴',
+              subtitle: 'Скільки коштує 1 храп',
+              value: '${_damagePerSnore.toInt()} ₴',
               icon: Icons.attach_money,
               iconColor: const Color(0xFFEF4444),
-              onChanged: (v) => setState(() => _damagePerSnore = v),
+              onDecrement: () {
+                if (_damagePerSnore > 10) {
+                  setState(() => _damagePerSnore -= 10);
+                }
+              },
+              onIncrement: () {
+                if (_damagePerSnore < 500) {
+                  setState(() => _damagePerSnore += 10);
+                }
+              },
+              canDecrement: _damagePerSnore > 10,
+              canIncrement: _damagePerSnore < 500,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // Тривалість
-            _buildSliderSetting(
+            _buildStepperSetting(
               label: 'Тривалість храпу',
-              subtitle: 'Мін. час звуку щоб вважатися храпом',
-              value: _snoreDurationSeconds.toDouble(),
-              min: 1,
-              max: 5,
-              divisions: 4,
-              valueText: '${_snoreDurationSeconds} сек',
+              subtitle: 'Мін. час звуку (сек)',
+              value: '$_snoreDurationSeconds сек',
               icon: Icons.timer_outlined,
               iconColor: const Color(0xFF10B981),
-              onChanged: (v) => setState(() => _snoreDurationSeconds = v.toInt()),
+              onDecrement: () {
+                if (_snoreDurationSeconds > 1) {
+                  setState(() => _snoreDurationSeconds--);
+                }
+              },
+              onIncrement: () {
+                if (_snoreDurationSeconds < 5) {
+                  setState(() => _snoreDurationSeconds++);
+                }
+              },
+              canDecrement: _snoreDurationSeconds > 1,
+              canIncrement: _snoreDurationSeconds < 5,
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 28),
 
-            // Кнопка скидання налаштувань
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
@@ -377,91 +395,117 @@ class _SnoreCostPageState extends State<SnoreCostPage>
     );
   }
 
-  Widget _buildSliderSetting({
+  Widget _buildStepperSetting({
     required String label,
     required String subtitle,
-    required double value,
-    required double min,
-    required double max,
-    required int divisions,
-    required String valueText,
+    required String value,
     required IconData icon,
     required Color iconColor,
-    required ValueChanged<double> onChanged,
+    required VoidCallback onDecrement,
+    required VoidCallback onIncrement,
+    required bool canDecrement,
+    required bool canIncrement,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, color: iconColor, size: 20),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(10),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
+            child: Icon(icon, color: iconColor, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
                   ),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white.withOpacity(0.5),
-                    ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.white.withOpacity(0.5),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
+          ),
+          Row(
+            children: [
+              _buildStepperButton(
+                icon: Icons.remove,
+                onTap: canDecrement ? onDecrement : null,
+                enabled: canDecrement,
               ),
-              child: Text(
-                valueText,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: iconColor,
+              const SizedBox(width: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: iconColor,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            trackHeight: 4,
-            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
-            overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
-            activeTrackColor: iconColor,
-            inactiveTrackColor: iconColor.withOpacity(0.3),
-            thumbColor: iconColor,
-            overlayColor: iconColor.withOpacity(0.2),
+              const SizedBox(width: 12),
+              _buildStepperButton(
+                icon: Icons.add,
+                onTap: canIncrement ? onIncrement : null,
+                enabled: canIncrement,
+              ),
+            ],
           ),
-          child: Slider(
-            value: value,
-            min: min,
-            max: max,
-            divisions: divisions,
-            onChanged: onChanged,
-          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepperButton({
+    required IconData icon,
+    required VoidCallback? onTap,
+    required bool enabled,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: enabled
+              ? const Color(0xFF6366F1)
+              : Colors.white.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(10),
         ),
-      ],
+        child: Icon(
+          icon,
+          color: enabled ? Colors.white : Colors.white.withOpacity(0.3),
+          size: 20,
+        ),
+      ),
     );
   }
 
