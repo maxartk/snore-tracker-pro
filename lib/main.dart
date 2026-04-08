@@ -2,6 +2,7 @@ import 'dart:math';
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:record/record.dart';
 
 void main() {
@@ -69,6 +70,7 @@ class _SnoreCostPageState extends State<SnoreCostPage>
   int _calibrationCount = 0;
   final List<double> _calibrationSamples = [];
   bool _inCooldown = false;
+  final List<String> _debugLog = [];
 
   @override
   void initState() {
@@ -127,6 +129,13 @@ class _SnoreCostPageState extends State<SnoreCostPage>
 
     final rms = sqrt(sum / count);
     final normalizedLevel = (rms / 32768.0).clamp(0.0, 1.0);
+    
+    // Debug log
+    if (_debugLog.length > 50) _debugLog.removeAt(0);
+    if (_calibrationCount >= 30) {
+      final adjustedLevel = (normalizedLevel - _backgroundLevel).clamp(0.0, 1.0);
+      _debugLog.add('${DateTime.now().toString().substring(11,19)} | raw:${normalizedLevel.toStringAsFixed(3)} bg:${_backgroundLevel.toStringAsFixed(3)} adj:${adjustedLevel.toStringAsFixed(3)} thr:${_snoreThreshold.toStringAsFixed(2)}');
+    }
     
     if (_calibrationCount < 30) {
       _calibrationSamples.add(normalizedLevel);
@@ -269,7 +278,21 @@ class _SnoreCostPageState extends State<SnoreCostPage>
       _totalDamage = 0.0;
       _volumeHistory.clear();
       _snoreLevel = 0.0;
+      _debugLog.clear();
     });
+  }
+
+  void _copyDebugLogs() {
+    final logs = _debugLog.isEmpty ? 'No logs yet' : _debugLog.join('\n');
+    Clipboard.setData(ClipboardData(text: logs));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_debugLog.isEmpty ? 'Немає логів' : 'Скопійовано ${_debugLog.length} записів'),
+        backgroundColor: const Color(0xFF10B981),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   void _showSettings() {
@@ -557,6 +580,7 @@ class _SnoreCostPageState extends State<SnoreCostPage>
                 _buildDamageCard(),
                 const SizedBox(height: 24),
                 Expanded(child: _buildGraph()),
+                _buildDebugPanel(),
                 _buildControls(),
                 const SizedBox(height: 16),
                 _buildInfoPanel(),
@@ -607,6 +631,12 @@ class _SnoreCostPageState extends State<SnoreCostPage>
           Row(
             children: [
               _buildGlassIconBtn(
+                icon: Icons.bug_report_outlined,
+                onTap: _copyDebugLogs,
+                color: const Color(0xFFF59E0B),
+              ),
+              const SizedBox(width: 8),
+              _buildGlassIconBtn(
                 icon: Icons.settings_outlined,
                 onTap: _showSettings,
               ),
@@ -622,7 +652,7 @@ class _SnoreCostPageState extends State<SnoreCostPage>
     );
   }
 
-  Widget _buildGlassIconBtn({required IconData icon, required VoidCallback onTap}) {
+  Widget _buildGlassIconBtn({required IconData icon, required VoidCallback onTap, Color? color}) {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
@@ -637,7 +667,7 @@ class _SnoreCostPageState extends State<SnoreCostPage>
         ],
       ),
       child: IconButton(
-        icon: Icon(icon, color: Colors.white.withOpacity(0.8)),
+        icon: Icon(icon, color: color ?? Colors.white.withOpacity(0.8)),
         onPressed: onTap,
       ),
     );
@@ -781,6 +811,74 @@ class _SnoreCostPageState extends State<SnoreCostPage>
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+
+  Widget _buildDebugPanel() {
+    if (!_isRecording) return const SizedBox.shrink();
+    
+    return Container(
+      margin: const EdgeInsets.only(top: 16, bottom: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.yellow.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                '🔍 DEBUG',
+                style: TextStyle(
+                  color: Colors.yellow,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                'logs: ${_debugLog.length}',
+                style: TextStyle(
+                  color: Colors.yellow.withOpacity(0.7),
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'raw: ${(_snoreLevel * 100).toInt()}% | bg: ${(_backgroundLevel * 100).toInt()}% | thr: ${(_snoreThreshold * 100).toInt()}%',
+            style: const TextStyle(color: Colors.yellow, fontSize: 11, fontFamily: 'monospace'),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'cooldown: $_inCooldown | progress: $_snoreInProgress | dur: ${_snoreDurationSeconds}s',
+            style: const TextStyle(color: Colors.yellow, fontSize: 11, fontFamily: 'monospace'),
+          ),
+          if (_debugLog.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              height: 60,
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: ListView.builder(
+                itemCount: _debugLog.length > 5 ? 5 : _debugLog.length,
+                itemBuilder: (ctx, i) => Text(
+                  _debugLog[_debugLog.length - 5 + i],
+                  style: const TextStyle(color: Colors.greenAccent, fontSize: 9, fontFamily: 'monospace'),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
