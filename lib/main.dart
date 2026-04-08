@@ -60,8 +60,8 @@ class _SnoreCostPageState extends State<SnoreCostPage>
   late Animation<double> _bounceAnimation;
 
   // Пороги для детекції храпу
-  final double _snoreThreshold = 0.25;
-  final int _snoreDurationSeconds = 3;
+  final double _snoreThreshold = 0.15;
+  final int _snoreDurationSeconds = 2;
 
   // Логіка детекції
   bool _snoreInProgress = false;
@@ -111,29 +111,42 @@ class _SnoreCostPageState extends State<SnoreCostPage>
     super.dispose();
   }
 
-  void _updateAudioLevel(List<int> samples) {
+
+  void _updateAudioLevel(dynamic samples) {
     if (samples.isEmpty) return;
 
     double sum = 0;
-    for (int sample in samples) {
-      sum += sample * sample;
+    int count = 0;
+    for (var sample in samples) {
+      final value = (sample is int) ? sample.toDouble() : (sample as double);
+      sum += value * value;
+      count++;
     }
-    final rms = sqrt(sum / samples.length);
+    if (count == 0) return;
+    
+    final rms = sqrt(sum / count);
     final normalizedLevel = (rms / 32768.0).clamp(0.0, 1.0);
-
+    
     if (_calibrationCount < 30) {
       _calibrationSamples.add(normalizedLevel);
       _calibrationCount++;
       if (_calibrationCount == 30) {
-        _backgroundLevel = _calibrationSamples.reduce((a, b) => a > b ? a : b);
+        _calibrationSamples.sort();
+        _backgroundLevel = _calibrationSamples.sublist(20).reduce((a, b) => a + b) / 10;
       }
+      return;
     }
 
+    if (normalizedLevel < 0.02) {
+      _snoreLevel = 0;
+      return;
+    }
     final adjustedLevel = (normalizedLevel - _backgroundLevel).clamp(0.0, 1.0);
     _snoreLevel = adjustedLevel;
 
     final displayLevel = adjustedLevel.clamp(0.0, 1.0);
     _volumeHistory.add(displayLevel);
+    if (_volumeHistory.length > 200) _volumeHistory.removeAt(0);
 
     if (!_snoreInProgress && displayLevel > _snoreThreshold) {
       _snoreStartTime = DateTime.now();
@@ -142,7 +155,20 @@ class _SnoreCostPageState extends State<SnoreCostPage>
       final duration = DateTime.now().difference(_snoreStartTime!);
       if (duration.inMilliseconds >= _snoreDurationSeconds * 1000) {
         _completeSnore();
-      } else if (displayLevel <= _snoreThreshold * 0.5) {
+      } else if (displayLevel <= _snoreThreshold * 0.3) {
+        _snoreInProgress = false;
+      }
+    }
+  }
+
+    if (!_snoreInProgress && displayLevel > _snoreThreshold) {
+      _snoreStartTime = DateTime.now();
+      _snoreInProgress = true;
+    } else if (_snoreInProgress) {
+      final duration = DateTime.now().difference(_snoreStartTime!);
+      if (duration.inMilliseconds >= _snoreDurationSeconds * 1000) {
+        _completeSnore();
+      } else if (displayLevel <= _snoreThreshold * 0.3) {
         _snoreInProgress = false;
       }
     }
