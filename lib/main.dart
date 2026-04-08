@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:mic_stream/mic_stream.dart';
+import 'package:record/record.dart';
 
 void main() {
   runApp(const SnoreCostApp());
@@ -51,6 +51,7 @@ class _SnoreCostPageState extends State<SnoreCostPage>
   final List<double> _volumeHistory = [];
   Timer? _historyTimer;
   StreamSubscription<List<int>>? _micSubscription;
+  AudioRecorder? _recorder;
 
   // Animation controllers
   late AnimationController _pulseController;
@@ -104,6 +105,7 @@ class _SnoreCostPageState extends State<SnoreCostPage>
   void dispose() {
     _historyTimer?.cancel();
     _micSubscription?.cancel();
+    _recorder?.dispose();
     _pulseController.dispose();
     _bounceController.dispose();
     super.dispose();
@@ -158,8 +160,26 @@ class _SnoreCostPageState extends State<SnoreCostPage>
 
   Future<void> _startRecording() async {
     try {
-      await MicStream.shouldRequestPermission(true);
-      final stream = await MicStream.microphone(sampleRate: 16000);
+      final recorder = AudioRecorder();
+      if (!await recorder.hasPermission()) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Дозвіл на мікрофон не надано'),
+              backgroundColor: Color(0xFFEF4444),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+
+      _recorder = recorder;
+      final stream = await recorder.startStream(const RecordConfig(
+        encoder: AudioEncoder.pcm16bits,
+        sampleRate: 16000,
+        numChannels: 1,
+      ));
       _micSubscription = stream.listen(_updateAudioLevel, cancelOnError: true);
 
       setState(() {
@@ -202,6 +222,8 @@ class _SnoreCostPageState extends State<SnoreCostPage>
     try {
       await _micSubscription?.cancel();
       _micSubscription = null;
+      await _recorder?.stop();
+      _recorder = null;
       _pulseController.stop();
       _pulseController.value = 1.0;
       setState(() {
