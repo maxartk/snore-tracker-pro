@@ -50,7 +50,7 @@ class _SnoreCostPageState extends State<SnoreCostPage>
   double _totalDamage = 0.0;
   final List<double> _volumeHistory = [];
   Timer? _historyTimer;
-  StreamSubscription<List<int>>? _micSubscription;
+  StreamSubscription<dynamic>? _micSubscription;
   AudioRecorder? _recorder;
 
   // Animation controllers
@@ -59,9 +59,9 @@ class _SnoreCostPageState extends State<SnoreCostPage>
   late Animation<double> _pulseAnimation;
   late Animation<double> _bounceAnimation;
 
-  // Пороги для детекції храпу
-  final double _snoreThreshold = 0.15;
-  final int _snoreDurationSeconds = 2;
+  // Налаштування (можна змінювати)
+  double _snoreThreshold = 0.15;
+  int _snoreDurationSeconds = 2;
 
   // Логіка детекції
   bool _snoreInProgress = false;
@@ -74,7 +74,6 @@ class _SnoreCostPageState extends State<SnoreCostPage>
   void initState() {
     super.initState();
 
-    // Pulse animation for record button
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -84,7 +83,6 @@ class _SnoreCostPageState extends State<SnoreCostPage>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    // Bounce animation for snore counter
     _bounceController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -110,7 +108,6 @@ class _SnoreCostPageState extends State<SnoreCostPage>
     _bounceController.dispose();
     super.dispose();
   }
-
 
   void _updateAudioLevel(dynamic samples) {
     if (samples.isEmpty) return;
@@ -147,19 +144,6 @@ class _SnoreCostPageState extends State<SnoreCostPage>
     final displayLevel = adjustedLevel.clamp(0.0, 1.0);
     _volumeHistory.add(displayLevel);
     if (_volumeHistory.length > 200) _volumeHistory.removeAt(0);
-
-    if (!_snoreInProgress && displayLevel > _snoreThreshold) {
-      _snoreStartTime = DateTime.now();
-      _snoreInProgress = true;
-    } else if (_snoreInProgress) {
-      final duration = DateTime.now().difference(_snoreStartTime!);
-      if (duration.inMilliseconds >= _snoreDurationSeconds * 1000) {
-        _completeSnore();
-      } else if (displayLevel <= _snoreThreshold * 0.3) {
-        _snoreInProgress = false;
-      }
-    }
-  }
 
     if (!_snoreInProgress && displayLevel > _snoreThreshold) {
       _snoreStartTime = DateTime.now();
@@ -223,7 +207,7 @@ class _SnoreCostPageState extends State<SnoreCostPage>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Запис аудіо запущено. Калібрування...'),
+            content: const Text('Запис аудіо запущено. Калібрування 3 сек...'),
             backgroundColor: const Color(0xFF10B981),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -275,6 +259,210 @@ class _SnoreCostPageState extends State<SnoreCostPage>
       _volumeHistory.clear();
       _snoreLevel = 0.0;
     });
+  }
+
+  void _showSettings() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1C2128),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      isScrollControlled: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+          left: 24,
+          right: 24,
+          top: 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Налаштування',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white70),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            
+            // Чутливість
+            _buildSliderSetting(
+              label: 'Чутливість',
+              subtitle: 'Поріг детекції храпу (менше = чутливіше)',
+              value: _snoreThreshold,
+              min: 0.05,
+              max: 0.50,
+              divisions: 45,
+              valueText: '${(_snoreThreshold * 100).toInt()}%',
+              icon: Icons.tune,
+              iconColor: const Color(0xFF6366F1),
+              onChanged: (v) => setState(() => _snoreThreshold = v),
+            ),
+            const SizedBox(height: 24),
+
+            // Ціна за храп
+            _buildSliderSetting(
+              label: 'Ціна за храп',
+              subtitle: 'Скільки коштує один храп Вікторії',
+              value: _damagePerSnore,
+              min: 10,
+              max: 500,
+              divisions: 49,
+              valueText: '${_damagePerSnore.toInt()} ₴',
+              icon: Icons.attach_money,
+              iconColor: const Color(0xFFEF4444),
+              onChanged: (v) => setState(() => _damagePerSnore = v),
+            ),
+            const SizedBox(height: 24),
+
+            // Тривалість
+            _buildSliderSetting(
+              label: 'Тривалість храпу',
+              subtitle: 'Мін. час звуку щоб вважатися храпом',
+              value: _snoreDurationSeconds.toDouble(),
+              min: 1,
+              max: 5,
+              divisions: 4,
+              valueText: '${_snoreDurationSeconds} сек',
+              icon: Icons.timer_outlined,
+              iconColor: const Color(0xFF10B981),
+              onChanged: (v) => setState(() => _snoreDurationSeconds = v.toInt()),
+            ),
+            const SizedBox(height: 32),
+
+            // Кнопка скидання налаштувань
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _snoreThreshold = 0.15;
+                    _damagePerSnore = 100;
+                    _snoreDurationSeconds = 2;
+                  });
+                  Navigator.pop(context);
+                },
+                icon: const Icon(Icons.restore, color: Color(0xFF6366F1)),
+                label: const Text(
+                  'Скинути налаштування',
+                  style: TextStyle(color: Color(0xFF6366F1)),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSliderSetting({
+    required String label,
+    required String subtitle,
+    required double value,
+    required double min,
+    required double max,
+    required int divisions,
+    required String valueText,
+    required IconData icon,
+    required Color iconColor,
+    required ValueChanged<double> onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: iconColor, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                valueText,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: iconColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            trackHeight: 4,
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+            overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+            activeTrackColor: iconColor,
+            inactiveTrackColor: iconColor.withOpacity(0.3),
+            thumbColor: iconColor,
+            overlayColor: iconColor.withOpacity(0.2),
+          ),
+          child: Slider(
+            value: value,
+            min: min,
+            max: max,
+            divisions: divisions,
+            onChanged: onChanged,
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -349,9 +537,18 @@ class _SnoreCostPageState extends State<SnoreCostPage>
               ),
             ],
           ),
-          _buildGlassIconBtn(
-            icon: Icons.refresh_rounded,
-            onTap: _resetStats,
+          Row(
+            children: [
+              _buildGlassIconBtn(
+                icon: Icons.settings_outlined,
+                onTap: _showSettings,
+              ),
+              const SizedBox(width: 8),
+              _buildGlassIconBtn(
+                icon: Icons.refresh_rounded,
+                onTap: _resetStats,
+              ),
+            ],
           ),
         ],
       ),
@@ -818,7 +1015,6 @@ class VolumeGraphPainter extends CustomPainter {
 
     final stepX = size.width / (data.length.clamp(1, 200));
 
-    // Gradient fill under the line
     final fillPath = Path();
     fillPath.moveTo(0, size.height);
 
@@ -849,7 +1045,6 @@ class VolumeGraphPainter extends CustomPainter {
 
     canvas.drawPath(fillPath, fillPaint);
 
-    // Main line
     final linePath = Path();
     for (int i = 0; i < data.length.clamp(0, 200); i++) {
       final x = i * stepX;
@@ -871,7 +1066,6 @@ class VolumeGraphPainter extends CustomPainter {
 
     canvas.drawPath(linePath, linePaint);
 
-    // Threshold line (glowing)
     final thresholdY = size.height * (1 - threshold * 0.9);
     final thresholdPaint = Paint()
       ..color = const Color(0xFFEF4444).withOpacity(0.4)
@@ -884,7 +1078,6 @@ class VolumeGraphPainter extends CustomPainter {
       thresholdPaint,
     );
 
-    // Glow effect for threshold
     final glowPaint = Paint()
       ..color = const Color(0xFFEF4444).withOpacity(0.15)
       ..strokeWidth = 4
