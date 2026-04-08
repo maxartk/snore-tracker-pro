@@ -68,6 +68,7 @@ class _SnoreCostPageState extends State<SnoreCostPage>
   double _backgroundLevel = 0.0;
   int _calibrationCount = 0;
   final List<double> _calibrationSamples = [];
+  bool _inCooldown = false;
 
   @override
   void initState() {
@@ -149,7 +150,7 @@ class _SnoreCostPageState extends State<SnoreCostPage>
     _volumeHistory.add(displayLevel);
     if (_volumeHistory.length > 200) _volumeHistory.removeAt(0);
 
-    if (!_snoreInProgress && displayLevel > _snoreThreshold) {
+    if (!_snoreInProgress && !_inCooldown && displayLevel > _snoreThreshold) {
       _snoreStartTime = DateTime.now();
       _snoreInProgress = true;
     } else if (_snoreInProgress) {
@@ -169,7 +170,13 @@ class _SnoreCostPageState extends State<SnoreCostPage>
     });
     _snoreInProgress = false;
     _snoreStartTime = null;
+    _inCooldown = true;
     _bounceController.forward().then((_) => _bounceController.reverse());
+    
+    // Cooldown 1.5 сек перед наступною детекцією
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      _inCooldown = false;
+    });
   }
 
   Future<void> _startRecording() async {
@@ -273,129 +280,137 @@ class _SnoreCostPageState extends State<SnoreCostPage>
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       isScrollControlled: true,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-          left: 24,
-          right: 24,
-          top: 24,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Налаштування',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 24,
+            right: 24,
+            top: 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Налаштування',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white70),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            
-            // Чутливість
-            _buildStepperSetting(
-              label: 'Чутливість',
-              subtitle: 'Поріг детекції (менше = чутливіше)',
-              value: '${(_snoreThreshold * 100).toInt()}%',
-              icon: Icons.tune,
-              iconColor: const Color(0xFF6366F1),
-              onDecrement: () {
-                if (_snoreThreshold > 0.05) {
-                  setState(() => _snoreThreshold = double.parse((_snoreThreshold - 0.05).toStringAsFixed(2)));
-                }
-              },
-              onIncrement: () {
-                if (_snoreThreshold < 0.50) {
-                  setState(() => _snoreThreshold = double.parse((_snoreThreshold + 0.05).toStringAsFixed(2)));
-                }
-              },
-              canDecrement: _snoreThreshold > 0.05,
-              canIncrement: _snoreThreshold < 0.50,
-            ),
-            const SizedBox(height: 20),
-
-            // Ціна за храп
-            _buildStepperSetting(
-              label: 'Ціна за храп',
-              subtitle: 'Скільки коштує 1 храп',
-              value: '${_damagePerSnore.toInt()} ₴',
-              icon: Icons.attach_money,
-              iconColor: const Color(0xFFEF4444),
-              onDecrement: () {
-                if (_damagePerSnore > 10) {
-                  setState(() => _damagePerSnore -= 10);
-                }
-              },
-              onIncrement: () {
-                if (_damagePerSnore < 500) {
-                  setState(() => _damagePerSnore += 10);
-                }
-              },
-              canDecrement: _damagePerSnore > 10,
-              canIncrement: _damagePerSnore < 500,
-            ),
-            const SizedBox(height: 20),
-
-            // Тривалість
-            _buildStepperSetting(
-              label: 'Тривалість храпу',
-              subtitle: 'Мін. час звуку (сек)',
-              value: '$_snoreDurationSeconds сек',
-              icon: Icons.timer_outlined,
-              iconColor: const Color(0xFF10B981),
-              onDecrement: () {
-                if (_snoreDurationSeconds > 1) {
-                  setState(() => _snoreDurationSeconds--);
-                }
-              },
-              onIncrement: () {
-                if (_snoreDurationSeconds < 5) {
-                  setState(() => _snoreDurationSeconds++);
-                }
-              },
-              canDecrement: _snoreDurationSeconds > 1,
-              canIncrement: _snoreDurationSeconds < 5,
-            ),
-            const SizedBox(height: 28),
-
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _snoreThreshold = 0.15;
-                    _damagePerSnore = 100;
-                    _snoreDurationSeconds = 2;
-                  });
-                  Navigator.pop(context);
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white70),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              
+              // Чутливість
+              _buildStepperSetting(
+                label: 'Чутливість',
+                subtitle: 'Поріг детекції (менше = чутливіше)',
+                value: '${(_snoreThreshold * 100).toInt()}%',
+                icon: Icons.tune,
+                iconColor: const Color(0xFF6366F1),
+                onDecrement: () {
+                  if (_snoreThreshold > 0.05) {
+                    setState(() => _snoreThreshold = double.parse((_snoreThreshold - 0.05).toStringAsFixed(2)));
+                    setSheetState(() {});
+                  }
                 },
-                icon: const Icon(Icons.restore, color: Color(0xFF6366F1)),
-                label: const Text(
-                  'Скинути налаштування',
-                  style: TextStyle(color: Color(0xFF6366F1)),
-                ),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                onIncrement: () {
+                  if (_snoreThreshold < 0.50) {
+                    setState(() => _snoreThreshold = double.parse((_snoreThreshold + 0.05).toStringAsFixed(2)));
+                    setSheetState(() {});
+                  }
+                },
+                canDecrement: _snoreThreshold > 0.05,
+                canIncrement: _snoreThreshold < 0.50,
+              ),
+              const SizedBox(height: 20),
+
+              // Ціна за храп
+              _buildStepperSetting(
+                label: 'Ціна за храп',
+                subtitle: 'Скільки коштує 1 храп',
+                value: '${_damagePerSnore.toInt()} ₴',
+                icon: Icons.attach_money,
+                iconColor: const Color(0xFFEF4444),
+                onDecrement: () {
+                  if (_damagePerSnore > 10) {
+                    setState(() => _damagePerSnore -= 10);
+                    setSheetState(() {});
+                  }
+                },
+                onIncrement: () {
+                  if (_damagePerSnore < 500) {
+                    setState(() => _damagePerSnore += 10);
+                    setSheetState(() {});
+                  }
+                },
+                canDecrement: _damagePerSnore > 10,
+                canIncrement: _damagePerSnore < 500,
+              ),
+              const SizedBox(height: 20),
+
+              // Тривалість
+              _buildStepperSetting(
+                label: 'Тривалість храпу',
+                subtitle: 'Мін. час звуку (сек)',
+                value: '$_snoreDurationSeconds сек',
+                icon: Icons.timer_outlined,
+                iconColor: const Color(0xFF10B981),
+                onDecrement: () {
+                  if (_snoreDurationSeconds > 1) {
+                    setState(() => _snoreDurationSeconds--);
+                    setSheetState(() {});
+                  }
+                },
+                onIncrement: () {
+                  if (_snoreDurationSeconds < 5) {
+                    setState(() => _snoreDurationSeconds++);
+                    setSheetState(() {});
+                  }
+                },
+                canDecrement: _snoreDurationSeconds > 1,
+                canIncrement: _snoreDurationSeconds < 5,
+              ),
+              const SizedBox(height: 28),
+
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _snoreThreshold = 0.15;
+                      _damagePerSnore = 100;
+                      _snoreDurationSeconds = 1;
+                    });
+                    Navigator.pop(context);
+                  },
+                  icon: const Icon(Icons.restore, color: Color(0xFF6366F1)),
+                  label: const Text(
+                    'Скинути налаштування',
+                    style: TextStyle(color: Color(0xFF6366F1)),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-          ],
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
     );
@@ -576,11 +591,13 @@ class _SnoreCostPageState extends State<SnoreCostPage>
               ),
               const SizedBox(height: 4),
               Text(
-                _isRecording ? 'Активний запис' : 'Готовий до роботи',
+                _isRecording
+                    ? (_inCooldown ? '⏳ Cooldown...' : 'Активний запис')
+                    : 'Готовий до роботи',
                 style: TextStyle(
                   fontSize: 14,
                   color: _isRecording
-                      ? const Color(0xFF10B981)
+                      ? (_inCooldown ? const Color(0xFFF59E0B) : const Color(0xFF10B981))
                       : Colors.white.withOpacity(0.5),
                   fontWeight: FontWeight.w500,
                 ),
