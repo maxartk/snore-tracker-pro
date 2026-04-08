@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:record/record.dart';
 
@@ -107,18 +108,22 @@ class _SnoreCostPageState extends State<SnoreCostPage>
     super.dispose();
   }
 
-  void _updateAudioLevel(dynamic samples) {
-    if (samples.isEmpty) return;
+  void _updateAudioLevel(Uint8List bytes) {
+    if (bytes.length < 2) return;
 
     double sum = 0;
-    int count = 0;
-    for (var sample in samples) {
-      final value = (sample is int) ? sample.toDouble() : (sample as double);
-      sum += value * value;
-      count++;
-    }
-    if (count == 0) return;
+    int count = bytes.length ~/ 2;
     
+    for (int i = 0; i < count * 2; i += 2) {
+      // Little-endian: перший байт = молодший, другий = старший
+      final raw = bytes[i] | (bytes[i + 1] << 8);
+      // Конвертуємо unsigned в signed int16
+      final signed = raw > 32767 ? raw - 65536 : raw;
+      sum += signed * signed.toDouble();
+    }
+    
+    if (count == 0) return;
+
     final rms = sqrt(sum / count);
     final normalizedLevel = (rms / 32768.0).clamp(0.0, 1.0);
     
