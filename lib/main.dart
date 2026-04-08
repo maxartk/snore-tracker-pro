@@ -61,7 +61,7 @@ class _SnoreCostPageState extends State<SnoreCostPage>
 
   // Налаштування (можна змінювати)
   double _snoreThreshold = 0.15;
-  int _snoreDurationSeconds = 2;
+  int _snoreDurationSeconds = 1;
 
   bool _snoreInProgress = false;
   DateTime? _snoreStartTime;
@@ -131,8 +131,9 @@ class _SnoreCostPageState extends State<SnoreCostPage>
       _calibrationSamples.add(normalizedLevel);
       _calibrationCount++;
       if (_calibrationCount == 30) {
+        // Сортуємо і беремо нижні 10 (найтихіші) — це фоновий шум
         _calibrationSamples.sort();
-        _backgroundLevel = _calibrationSamples.sublist(20).reduce((a, b) => a + b) / 10;
+        _backgroundLevel = _calibrationSamples.sublist(0, 10).reduce((a, b) => a + b) / 10;
       }
       return;
     }
