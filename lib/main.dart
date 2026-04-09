@@ -61,7 +61,7 @@ class _SnoreCostPageState extends State<SnoreCostPage>
   late Animation<double> _bounceAnimation;
 
   // Налаштування (можна змінювати)
-  double _snoreThreshold = 0.15;
+  double _snoreThreshold = 0.04;
   int _snoreDurationSeconds = 1;
 
   bool _snoreInProgress = false;
@@ -342,18 +342,18 @@ class _SnoreCostPageState extends State<SnoreCostPage>
                 icon: Icons.tune,
                 iconColor: const Color(0xFF6366F1),
                 onDecrement: () {
-                  if (_snoreThreshold > 0.05) {
-                    setState(() => _snoreThreshold = double.parse((_snoreThreshold - 0.05).toStringAsFixed(2)));
+                  if (_snoreThreshold > 0.01) {
+                    setState(() => _snoreThreshold = double.parse((_snoreThreshold - 0.01).toStringAsFixed(2)));
                     setSheetState(() {});
                   }
                 },
                 onIncrement: () {
                   if (_snoreThreshold < 0.50) {
-                    setState(() => _snoreThreshold = double.parse((_snoreThreshold + 0.05).toStringAsFixed(2)));
+                    setState(() => _snoreThreshold = double.parse((_snoreThreshold + 0.01).toStringAsFixed(2)));
                     setSheetState(() {});
                   }
                 },
-                canDecrement: _snoreThreshold > 0.05,
+                canDecrement: _snoreThreshold > 0.01,
                 canIncrement: _snoreThreshold < 0.50,
               ),
               const SizedBox(height: 20),
@@ -411,7 +411,7 @@ class _SnoreCostPageState extends State<SnoreCostPage>
                 child: OutlinedButton.icon(
                   onPressed: () {
                     setState(() {
-                      _snoreThreshold = 0.15;
+                      _snoreThreshold = 0.04;
                       _damagePerSnore = 100;
                       _snoreDurationSeconds = 1;
                     });
