@@ -63,6 +63,7 @@ class _SnoreCostPageState extends State<SnoreCostPage>
   // Налаштування (можна змінювати)
   double _snoreThreshold = 0.04;
   int _snoreDurationSeconds = 1;
+  double _audioGain = 3.0; // Підсилення сигналу (1.0 = без підсилення, 3.0 = 3x)
 
   bool _snoreInProgress = false;
   DateTime? _snoreStartTime;
@@ -128,7 +129,9 @@ class _SnoreCostPageState extends State<SnoreCostPage>
     if (count == 0) return;
 
     final rms = sqrt(sum / count);
-    final normalizedLevel = (rms / 32768.0).clamp(0.0, 1.0);
+    // Застосовуємо підсилення для збільшення чутливості на відстані
+    final amplifiedRms = rms * _audioGain;
+    final normalizedLevel = (amplifiedRms / 32768.0).clamp(0.0, 1.0);
     
     // Debug log
     if (_debugLog.length > 50) _debugLog.removeAt(0);
@@ -404,6 +407,30 @@ class _SnoreCostPageState extends State<SnoreCostPage>
                 canDecrement: _snoreDurationSeconds > 1,
                 canIncrement: _snoreDurationSeconds < 5,
               ),
+              const SizedBox(height: 20),
+
+              // Підсилення (Gain)
+              _buildStepperSetting(
+                label: 'Підсилення мікрофона',
+                subtitle: 'Збільшує чутливість на відстані',
+                value: '${_audioGain.toStringAsFixed(1)}x',
+                icon: Icons.volume_up,
+                iconColor: const Color(0xFF8B5CF6),
+                onDecrement: () {
+                  if (_audioGain > 1.0) {
+                    setState(() => _audioGain = double.parse((_audioGain - 0.5).toStringAsFixed(1)));
+                    setSheetState(() {});
+                  }
+                },
+                onIncrement: () {
+                  if (_audioGain < 10.0) {
+                    setState(() => _audioGain = double.parse((_audioGain + 0.5).toStringAsFixed(1)));
+                    setSheetState(() {});
+                  }
+                },
+                canDecrement: _audioGain > 1.0,
+                canIncrement: _audioGain < 10.0,
+              ),
               const SizedBox(height: 28),
 
               SizedBox(
@@ -414,6 +441,7 @@ class _SnoreCostPageState extends State<SnoreCostPage>
                       _snoreThreshold = 0.04;
                       _damagePerSnore = 100;
                       _snoreDurationSeconds = 1;
+                      _audioGain = 3.0;
                     });
                     Navigator.pop(context);
                   },
