@@ -63,7 +63,7 @@ class _SnoreCostPageState extends State<SnoreCostPage>
   // Налаштування (можна змінювати)
   double _snoreThreshold = 0.04;
   int _snoreDurationSeconds = 1;
-  double _audioGain = 3.0; // Підсилення сигналу (1.0 = без підсилення, 3.0 = 3x)
+  double _audioGain = 10.0; // Підсилення сигналу (1.0 = без підсилення, 3.0 = 3x)
 
   bool _snoreInProgress = false;
   DateTime? _snoreStartTime;
