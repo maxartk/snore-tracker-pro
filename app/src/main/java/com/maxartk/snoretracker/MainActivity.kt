@@ -273,7 +273,7 @@ fun SnoreApp(ap: AudioProcessor) {
                                     val y = h - (hist[i].coerceIn(0f, 1f) * h)
                                     if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
                                 }
-                                drawPath(path, if (isLoud) Color(0xFFEF4444) else Color(0xFF10B981), strokeWidth = 2f)
+                                drawPath(path, if (isLoud) Color(0xFFEF4444) else Color(0xFF10B981), style = Stroke(width = 2f))
 
                                 // Fill
                                 val lastX = (hist.size - 1) * step
