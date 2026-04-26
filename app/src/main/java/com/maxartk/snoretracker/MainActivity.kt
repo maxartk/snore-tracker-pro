@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,15 +23,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -83,6 +86,8 @@ fun SnoreApp(ap: AudioProcessor) {
     }
 
     // Collect history on main thread
+    val isLoud = state.level > settings.threshold
+
     LaunchedEffect(state.level) {
         if (state.isRecording && !state.isCalibrating && state.level > 0) {
             history.add(state.level)
@@ -190,7 +195,7 @@ fun SnoreApp(ap: AudioProcessor) {
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFEF4444).copy(alpha = 0.12f)),
                 shape = RoundedCornerShape(24.dp),
-                border = CardDefaults.cardBorder(border = Brush.horizontalGradient(listOf(Color(0xFFEF4444).copy(alpha=0.3f), Color(0xFFEF4444).copy(alpha=0.1f))), 1.dp))
+                border = BorderStroke(1.dp, Brush.horizontalGradient(listOf(Color(0xFFEF4444).copy(alpha=0.3f), Color(0xFFEF4444).copy(alpha=0.1f))))
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(24.dp),
@@ -229,7 +234,6 @@ fun SnoreApp(ap: AudioProcessor) {
                             Text("Рівень аудіо", fontSize = 12.sp, color = Color.White.copy(alpha = 0.5f), fontWeight = FontWeight.W500)
                         }
                         val pct = (state.level * 100).toInt()
-                        val isLoud = state.level > settings.threshold
                         Surface(
                             color = if (isLoud) Color(0xFFEF4444).copy(alpha = 0.2f) else Color(0xFF10B981).copy(alpha = 0.2f),
                             shape = RoundedCornerShape(8.dp)
@@ -295,7 +299,7 @@ fun SnoreApp(ap: AudioProcessor) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text("🔍 DEBUG", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Yellow)
                         Spacer(Modifier.height(4.dp))
-                        Text("raw:${(state.rawLevel*100).toInt()}% bg:${(state.backgroundLevel*100).toInt()}% thr:${(settings.threshold*100).toInt()}% cd:${state.isCooldown}", fontSize = 11.sp, color = Color.Yellow, fontFamily = androidx.compose.ui.text.font.Monospace)
+                        Text("raw:${(state.rawLevel*100).toInt()}% bg:${(state.backgroundLevel*100).toInt()}% thr:${(settings.threshold*100).toInt()}% cd:${state.isCooldown}", fontSize = 11.sp, color = Color.Yellow, fontFamily = FontFamily.Monospace)
                     }
                 }
                 Spacer(Modifier.height(16.dp))
@@ -329,7 +333,7 @@ fun SnoreApp(ap: AudioProcessor) {
                     onClick = { ap.reset() },
                     modifier = Modifier.size(56.dp),
                     shape = RoundedCornerShape(16.dp),
-                    border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(brush = Brush.horizontalGradient(listOf(Color(0xFF6366F1), Color(0xFF6366F1)))),
+                    border = BorderStroke(1.dp, Brush.horizontalGradient(listOf(Color(0xFF6366F1), Color(0xFF6366F1)))),
                     contentPadding = PaddingValues(0.dp)
                 ) {
                     Icon(Icons.Default.Refresh, null, tint = Color(0xFF6366F1))
@@ -363,7 +367,7 @@ fun SnoreApp(ap: AudioProcessor) {
                     colors = CardDefaults.cardColors(containerColor = Color(0xFFEF4444).copy(alpha = 0.15f)),
                     shape = RoundedCornerShape(16.dp),
                 ) {
-                    Text(err, color = Color(0xFFEF4444), fontSize = 13.sp, modifier = Modifier.padding(16.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    Text(err, color = Color(0xFFEF4444), fontSize = 13.sp, modifier = Modifier.padding(16.dp), textAlign = TextAlign.Center)
                 }
             }
         }
@@ -467,7 +471,7 @@ fun SettingsModal(settings: SnoreSettings, onDismiss: () -> Unit, onReset: () ->
                     onClick = { onReset(); threshold = 0.04f; price = 100; duration = 1; gain = 10f },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(brush = Brush.horizontalGradient(listOf(Color(0xFF6366F1), Color(0xFF6366F1)))),
+                    border = BorderStroke(1.dp, Brush.horizontalGradient(listOf(Color(0xFF6366F1), Color(0xFF6366F1)))),
                     contentPadding = PaddingValues(vertical = 14.dp)
                 ) {
                     Icon(Icons.Default.RestartAlt, null, tint = Color(0xFF6366F1))
