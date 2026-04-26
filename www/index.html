@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="ХрапОмстр">
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="manifest" href="manifest.json">
-<title>ХрапОмстр — Вартість храпу</title>
+<title>ХрапОмстр</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg1:#0D1117;--bg2:#161B22;--bg3:#1C2128;--purple:#6366F1;--green:#10B981;--red:#EF4444;--yellow:#F59E0B;--txt:#fff;--txt2:rgba(255,255,255,.6);--txt3:rgba(255,255,255,.3);--brd:rgba(255,255,255,.08)}
@@ -18,7 +18,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Ro
 .hdr{padding:16px 0;display:flex;justify-content:space-between;align-items:center}
 .hdr-t{font-size:28px;font-weight:700;letter-spacing:-.5px}
 .hdr-s{font-size:14px;font-weight:500;margin-top:4px}
-.hdr-s.on{color:var(--green)}.hdr-s.cd{color:var(--yellow)}.hdr-s.off{color:var(--txt2)}
+.hdr-s.on{color:var(--green)}.hdr-s.cd{color:var(--yellow)}.hdr-s.off{color:var(--txt2)}.hdr-s.err{color:var(--red)}
 .hdr-a{display:flex;gap:8px}
 .ib{width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.08);border:1px solid var(--brd);color:rgba(255,255,255,.8);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;font-size:20px}
 .ib:active{transform:scale(.92);background:rgba(255,255,255,.15)}
@@ -36,7 +36,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Ro
 .dh{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px;font-size:12px;font-weight:600;letter-spacing:1.5px;color:rgba(239,68,68,.9)}
 .dh svg{width:18px;height:18px;fill:rgba(239,68,68,.8)}
 .da{font-size:52px;font-weight:700;color:var(--red);line-height:1.1}
-.dp{margin-top:8px;display:inline-block;padding:6px 16px;border-radius:20px;background:rgba(255,255,255,.08);font-size:13px;color:var(--txt2);font-weight:500}
+.dp2{margin-top:8px;display:inline-block;padding:6px 16px;border-radius:20px;background:rgba(255,255,255,.08);font-size:13px;color:var(--txt2);font-weight:500}
 .gc{flex:1;min-height:120px;border-radius:20px;background:rgba(255,255,255,.03);border:1px solid var(--brd);padding:16px;display:flex;flex-direction:column;margin-bottom:16px}
 .gh{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .ghl{display:flex;align-items:center;gap:8px}
@@ -52,7 +52,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Ro
 .db{margin-bottom:16px;padding:12px;border-radius:12px;background:rgba(0,0,0,.3);border:1px solid rgba(239,68,68,.3);font-family:'SF Mono',Menlo,monospace;font-size:11px;color:yellow;display:none}
 .db.vis{display:block}
 .dbh{display:flex;justify-content:space-between;margin-bottom:8px;font-weight:700;font-size:12px}
-.dbl{max-height:60px;overflow-y:auto;background:rgba(0,0,0,.5);border-radius:6px;padding:6px;color:greenyellow;font-size:9px;white-space:nowrap;overflow-x:auto}
+.dbl{max-height:80px;overflow-y:auto;background:rgba(0,0,0,.5);border-radius:6px;padding:6px;color:greenyellow;font-size:9px;white-space:nowrap;overflow-x:auto}
 .ctrls{display:flex;gap:12px;margin-bottom:16px}
 .br{flex:1;padding:16px;border-radius:16px;border:none;font-size:16px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .3s;-webkit-tap-highlight-color:transparent}
 .br.st{background:linear-gradient(135deg,var(--green),#059669);color:#fff;box-shadow:0 4px 20px rgba(16,185,129,.4)}
@@ -83,7 +83,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Ro
 .sv{min-width:60px;text-align:center;font-size:16px;font-weight:700;padding:8px 14px;border-radius:10px;background:rgba(99,102,241,.15)}
 .sb{width:40px;height:40px;border-radius:10px;border:none;font-size:20px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
 .sb.en{background:var(--purple);color:#fff}
-.sb.di{background:rgba(255,255,255,.08);color:rgba(255,255,255,.3);pointer-events:none}
 .sb:active.en{transform:scale(.9)}
 .brs2{width:100%;padding:14px;border-radius:12px;border:1.5px solid var(--purple);background:transparent;color:var(--purple);font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px}
 .brs2:active{background:rgba(99,102,241,.15)}
@@ -92,18 +91,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Ro
 .toast.ok{background:var(--green);color:#fff}
 .toast.err{background:var(--red);color:#fff}
 .toast.inf{background:var(--purple);color:#fff}
+.err-box{display:none;padding:16px;border-radius:16px;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);margin-bottom:16px;font-size:13px;color:#EF4444;text-align:center}
+.err-box.vis{display:block}
 </style>
 </head>
 <body>
 <div class="app">
+  <div class="err-box" id="errBox"></div>
+
   <div class="hdr">
     <div>
       <div class="hdr-t">ХрапОмстр</div>
       <div class="hdr-s off" id="st">Готовий до роботи</div>
     </div>
     <div class="hdr-a">
-      <div class="ib y" id="bd" onclick="tDb()">&#128027;</div>
-      <div class="ib" id="bs" onclick="oSet()">&#9881;</div>
+      <div class="ib y" onclick="tDb()">&#128027;</div>
+      <div class="ib" onclick="oSet()">&#9881;</div>
       <div class="ib" onclick="rSt()">&#8635;</div>
     </div>
   </div>
@@ -121,7 +124,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Ro
       <span>ШКОДА ВІКТОРІЇ</span>
     </div>
     <div class="da" id="dmg">₴0</div>
-    <div class="dp" id="dps">100 ₴ за храп</div>
+    <div class="dp2" id="dps">100 ₴ за храп</div>
   </div>
 
   <div class="gc">
@@ -196,15 +199,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Ro
 <div class="toast" id="tst"></div>
 
 <script>
-let R=false,C=0,D=0,L=0,dbg=[],S={th:.04,pr:100,du:1,ga:10},AC=null,AN=null,MS=null,AF=null,DA=null;
-let SI=false,ST=null,IC=false,BG=0,CC=0,CS=[],VH=[],DV=false,WL=null;
+// ===== STATE =====
+let R=false, C=0, D=0, L=0, dbg=[];
+let S={th:.04, pr:100, du:1, ga:10};
+let AC=null, AN=null, MS=null, AF=null, DA=null, SP=null, ctx=null;
+let SI=false, ST=null, IC=false, BG=0, CC2=0, CS2=[], VH=[], DV=false, WL=null;
+let peakHold=0, peakDecay=0.95;
 
-function init(){lS();uUI();
-document.getElementById('bs').onclick=oSet;
-document.getElementById('bd').onclick=tDb;
-rWL();
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&R)rWL()})}
-
+function init(){lS();uUI();rWL();document.addEventListener('visibilitychange',()=>{if(!document.hidden&&R)rWL()})}
 function lS(){let s=localStorage.getItem('snore_settings');if(s)try{S={...S,...JSON.parse(s)}}catch(e){}}
 function sS(){localStorage.setItem('snore_settings',JSON.stringify(S))}
 
@@ -214,103 +216,361 @@ async function relWL(){if(WL){try{await WL.release()}catch(e){}WL=null}}
 async function tRec(){R?sStop():await sStart()}
 
 async function sStart(){
-try{MS=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:1,sampleRate:16000}});
-AC=new(window.AudioContext||window.webkitAudioContext)({sampleRate:16000});
-let src=AC.createMediaStreamSource(MS);
-AN=AC.createAnalyser();AN.fftSize=2048;AN.smoothingTimeConstant=.3;
-src.connect(AN);DA=new Float32Array(AN.fftSize);
-R=true;C=0;D=0;VH=[];L=0;SI=false;ST=null;IC=false;BG=0;CC=0;CS=[];dbg=[];
-uRB();document.getElementById('ph').style.display='none';
-document.getElementById('vg').style.display='block';
-document.getElementById('cb').classList.add('vis');
-rWL();toast('Запуск... Калібрування 3 сек','ok');dLoop()
-}catch(e){console.error(e);toast('Дозвіл на мікрофон не надано','err')}}
+  try {
+    // Hide error, show calibration
+    document.getElementById('errBox').classList.remove('vis');
+    document.getElementById('cb').classList.add('vis');
+    updStatus('Запит мікрофона...','cd');
+    
+    // Request mic - try with minimal constraints first for max compatibility
+    let constraints = {audio: true};
+    try {
+      // Try with advanced constraints for raw audio
+      constraints = {
+        audio: {
+          echoCancellation: {ideal: false},
+          noiseSuppression: {ideal: false},
+          autoGainControl: {ideal: false},
+          channelCount: {ideal: 1},
+          sampleRate: {ideal: 16000}
+        }
+      };
+    } catch(e) {}
+    
+    MS = await navigator.mediaDevices.getUserMedia(constraints);
+    
+    // Create audio context
+    AC = new (window.AudioContext || window.webkitAudioContext)({sampleRate: 16000});
+    
+    // CRITICAL: Resume AudioContext (required on mobile)
+    if (AC.state === 'suspended') {
+      await AC.resume();
+    }
+    
+    let src = AC.createMediaStreamSource(MS);
+    
+    // Create analyser - NO smoothing for fast response
+    AN = AC.createAnalyser();
+    AN.fftSize = 2048;
+    AN.smoothingTimeConstant = 0;  // ZERO smoothing for instant response
+    AN.minDecibels = -100;
+    AN.maxDecibels = -10;
+    
+    // ScriptProcessor for raw audio data (more reliable than AnalyserNode on mobile)
+    const BUFFER_SIZE = 2048;
+    SP = AC.createScriptProcessor(BUFFER_SIZE, 1, 1);
+    
+    SP.onaudioprocess = function(e) {
+      if (!R) return;
+      const input = e.inputBuffer.getChannelData(0);
+      processAudioBuffer(input);
+    };
+    
+    src.connect(AN);
+    src.connect(SP);
+    SP.connect(AC.destination);  // Must connect to destination to process
+    
+    // Also connect analyser for visualization
+    // SP already processes audio, AN is for frequency display only
+    
+    // Reset state
+    R = true; C = 0; D = 0; VH = []; L = 0;
+    SI = false; ST = null; IC = false;
+    BG = 0; CC2 = 0; CS2 = []; dbg = [];
+    
+    uRB();
+    document.getElementById('ph').style.display = 'none';
+    document.getElementById('vg').style.display = 'block';
+    
+    rWL();
+    
+    // Start animation loop for UI updates
+    function animLoop() {
+      if (!R) return;
+      drawGraph();
+      updUI();
+      AF = requestAnimationFrame(animLoop);
+    }
+    AF = requestAnimationFrame(animLoop);
+    
+    toast('Калібрування 3 сек...', 'ok');
+    
+  } catch(err) {
+    console.error('Mic error:', err);
+    let msg = 'Помилка мікрофону';
+    if (err.name === 'NotAllowedError') msg = 'Дозвіл на мікрофон відхилено';
+    else if (err.name === 'NotFoundError') msg = 'Мікрофон не знайдено';
+    else if (err.name === 'NotReadableError') msg = 'Мікрофон зайнятий іншим додатком';
+    else msg = 'Помилка: ' + err.message;
+    
+    const eb = document.getElementById('errBox');
+    eb.textContent = msg;
+    eb.classList.add('vis');
+    
+    document.getElementById('cb').classList.remove('vis');
+    updStatus('Помилка мікрофона','err');
+    toast(msg, 'err');
+    sStop();
+  }
+}
 
-function sStop(){R=false;if(AF){cancelAnimationFrame(AF);AF=null}if(MS){MS.getTracks().forEach(t=>t.stop());MS=null}if(AC){AC.close();AC=null}uRB();relWL();document.getElementById('cb').classList.remove('vis')}
+function processAudioBuffer(samples) {
+  // Calculate RMS from raw float samples (-1.0 to 1.0)
+  let sum = 0;
+  for (let i = 0; i < samples.length; i++) {
+    sum += samples[i] * samples[i];
+  }
+  const rms = Math.sqrt(sum / samples.length);
+  
+  // Apply gain
+  const amplifiedRms = rms * S.ga;
+  const normalizedLevel = Math.min(amplifiedRms, 1.0);
+  
+  // Calibration phase (~50 frames ≈ 3 seconds)
+  if (CC2 < 50) {
+    CS2.push(normalizedLevel);
+    CC2++;
+    const pct = Math.round((CC2 / 50) * 100);
+    document.getElementById('cbf').style.width = pct + '%';
+    
+    if (CC2 === 50) {
+      // Sort and take bottom 50% as quietest samples = background noise
+      CS2.sort((a, b) => a - b);
+      const half = Math.floor(CS2.length * 0.5);
+      BG = CS2.slice(0, half).reduce((a, b) => a + b, 0) / half;
+      document.getElementById('cb').classList.remove('vis');
+      
+      // Debug: show calibration result
+      addDebug('CALIBRATED', `bg:${(BG*100).toFixed(1)}% samples:${CS2.length}`);
+      toast(`Калібрування: фон ${(BG*100).toFixed(1)}%`, 'ok');
+    }
+    return;
+  }
+  
+  // Skip silence
+  if (normalizedLevel < 0.005) {
+    L = Math.max(0, L * 0.8);  // Decay when silent
+    return;
+  }
+  
+  // Adjusted level above background
+  const adjustedLevel = Math.max(0, normalizedLevel - BG);
+  L = adjustedLevel;
+  
+  // Track peak for visualization
+  peakHold = Math.max(peakHold, adjustedLevel);
+  
+  // Add to history for graph
+  VH.push(adjustedLevel);
+  if (VH.length > 250) VH.shift();
+  
+  // Snore detection
+  if (!SI && !IC && adjustedLevel > S.th) {
+    ST = Date.now();
+    SI = true;
+    addDebug('SNORE_START', `level:${(adjustedLevel*100).toFixed(1)}% > thr:${(S.th*100).toFixed(0)}%`);
+  } else if (SI) {
+    const elapsed = Date.now() - ST;
+    if (elapsed >= S.du * 1000) {
+      completeSnore();
+    } else if (adjustedLevel <= S.th * 0.25) {
+      SI = false;
+      ST = null;
+      addDebug('SNORE_CANCEL', `level dropped to ${(adjustedLevel*100).toFixed(1)}%`);
+    }
+  }
+}
 
-function dLoop(){if(!R)return;AN.getFloatTimeDomainData(DA);
-let s=0;for(let i=0;i<DA.length;i++)s+=DA[i]*DA[i];
-let rms=Math.sqrt(s/DA.length),ar=rms*S.ga,nl=Math.min(ar,1);
-if(CC<30){CS.push(nl);CC++;document.getElementById('cbf').style.width=Math.round(CC/30*100)+'%';
-if(CC===30){CS.sort((a,b)=>a-b);let h=Math.floor(CS.length*.5);BG=CS.slice(0,h).reduce((a,b)=>a+b,0)/h;
-document.getElementById('cb').classList.remove('vis');toast('Калібрування завершено!','ok')}}
-if(nl<.02){L=0}else{let al=Math.max(0,nl-BG);L=al;VH.push(al);if(VH.length>200)VH.shift();
-if(!SI&&!IC&&al>S.th){ST=Date.now();SI=true}else if(SI){let el=Date.now()-ST;
-if(el>=S.du*1000)cS();else if(al<=S.th*.3){SI=false;ST=null}}}
-if(DV)aD(nl,L);dG();uUI();AF=requestAnimationFrame(dLoop)}
+function completeSnore() {
+  C++;
+  D += S.pr;
+  SI = false;
+  ST = null;
+  IC = true;
+  
+  addDebug('SNORE_COMPLETE', `count:${C} damage:${D}`);
+  
+  const circle = document.getElementById('circ');
+  circle.classList.add('on', 'bnc');
+  setTimeout(() => circle.classList.remove('bnc'), 300);
+  
+  setTimeout(() => { IC = false; }, 1500);
+  
+  if (navigator.vibrate) navigator.vibrate(100);
+}
 
-function cS(){C++;D+=S.pr;SI=false;ST=null;IC=true;
-let c=document.getElementById('circ');c.classList.add('on','bnc');setTimeout(()=>c.classList.remove('bnc'),300);
-setTimeout(()=>{IC=false},1500);if(navigator.vibrate)navigator.vibrate(100)}
+function sStop() {
+  R = false;
+  if (AF) { cancelAnimationFrame(AF); AF = null; }
+  if (SP) { SP.disconnect(); SP.onaudioprocess = null; SP = null; }
+  if (MS) { MS.getTracks().forEach(t => t.stop()); MS = null; }
+  if (AC) { 
+    try { AC.close(); } catch(e) {}
+    AC = null; AN = null;
+  }
+  uRB();
+  relWL();
+  document.getElementById('cb').classList.remove('vis');
+}
 
-function dG(){let cv=document.getElementById('vg'),ct=cv.parentElement;
-cv.width=ct.clientWidth*devicePixelRatio;cv.height=ct.clientHeight*devicePixelRatio;
-cv.style.width=ct.clientWidth+'px';cv.style.height=ct.clientHeight+'px';
-let cx=cv.getContext('2d');cx.scale(devicePixelRatio,devicePixelRatio);
-let w=ct.clientWidth,h=ct.clientHeight;cx.clearRect(0,0,w,h);if(VH.length<2)return;
-let ty=h-(S.th*h);cx.strokeStyle='rgba(239,68,68,.4)';cx.lineWidth=1;cx.setLineDash([4,4]);
-cx.beginPath();cx.moveTo(0,ty);cx.lineTo(w,ty);cx.stroke();cx.setLineDash([]);
-let st=w/200;cx.beginPath();cx.lineWidth=2;for(let i=0;i<VH.length;i++){let x=i*st,y=h-Math.min(VH[i],1)*h;
-i===0?cx.moveTo(x,y):cx.lineTo(x,y)}
-let il=L>S.th;cx.strokeStyle=il?'#EF4444':'#10B981';cx.stroke();
-let lx=(VH.length-1)*st;cx.lineTo(lx,h);cx.lineTo(0,h);cx.closePath();
-let gr=cx.createLinearGradient(0,0,0,h);if(il){gr.addColorStop(0,'rgba(239,68,68,.3)');gr.addColorStop(1,'rgba(239,68,68,.02)')}
-else{gr.addColorStop(0,'rgba(16,185,129,.3)');gr.addColorStop(1,'rgba(16,185,129,.02)')}
-cx.fillStyle=gr;cx.fill()}
+// ===== GRAPH DRAWING =====
+function drawGraph() {
+  const cv = document.getElementById('vg');
+  if (!cv || !R) return;
+  const ct = cv.parentElement;
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = ct.clientWidth * dpr;
+  cv.height = ct.clientHeight * dpr;
+  cv.style.width = ct.clientWidth + 'px';
+  cv.style.height = ct.clientHeight + 'px';
+  
+  const cx = cv.getContext('2d');
+  cx.scale(dpr, dpr);
+  const w = ct.clientWidth, h = ct.clientHeight;
+  cx.clearRect(0, 0, w, h);
+  
+  if (VH.length < 2) return;
+  
+  // Threshold line
+  const tY = h - (S.th * h);
+  cx.strokeStyle = 'rgba(239, 68, 68, 0.5)';
+  cx.lineWidth = 1.5;
+  cx.setLineDash([6, 4]);
+  cx.beginPath();
+  cx.moveTo(0, tY);
+  cx.lineTo(w, tY);
+  cx.stroke();
+  cx.setLineDash([]);
+  
+  // Threshold label
+  cx.fillStyle = 'rgba(239, 68, 68, 0.6)';
+  cx.font = '10px sans-serif';
+  cx.fillText(`поріг ${(S.th*100).toFixed(0)}%`, 4, tY - 4);
+  
+  // Volume line
+  const step = w / 250;
+  cx.beginPath();
+  cx.lineWidth = 2;
+  
+  for (let i = 0; i < VH.length; i++) {
+    const x = i * step;
+    const y = h - (Math.min(VH[i], 1.0) * h);
+    i === 0 ? cx.moveTo(x, y) : cx.lineTo(x, y);
+  }
+  
+  const isLoud = L > S.th;
+  cx.strokeStyle = isLoud ? '#EF4444' : '#10B981';
+  cx.stroke();
+  
+  // Fill under curve
+  const lastX = (VH.length - 1) * step;
+  cx.lineTo(lastX, h);
+  cx.lineTo(0, h);
+  cx.closePath();
+  const gr = cx.createLinearGradient(0, 0, 0, h);
+  if (isLoud) {
+    gr.addColorStop(0, 'rgba(239,68,68,.3)');
+    gr.addColorStop(1, 'rgba(239,68,68,.02)');
+  } else {
+    gr.addColorStop(0, 'rgba(16,185,129,.3)');
+    gr.addColorStop(1, 'rgba(16,185,129,.02)');
+  }
+  cx.fillStyle = gr;
+  cx.fill();
+}
 
-function uUI(){let st=document.getElementById('st');
-if(!R){st.textContent='Готовий до роботи';st.className='hdr-s off'}
-else if(IC){st.textContent='⏳ Cooldown...';st.className='hdr-s cd'}
-else{st.textContent='Активний запис';st.className='hdr-s on'}
-document.getElementById('cnt').textContent=C;
-let ci=document.getElementById('circ');if(C>0){ci.classList.add('on');document.getElementById('cnt').classList.add('red')}
-document.getElementById('dmg').textContent='₴'+Math.round(D);
-document.getElementById('dps').textContent=S.pr+' ₴ за храп';
-let p=Math.round(L*100),lb=document.getElementById('lvl');lb.textContent=p+'%';
-lb.className='glb '+(L>S.th?'l':'n');
-document.getElementById('it').textContent=Math.round(S.th*100)+'%';
-document.getElementById('ig').textContent=S.ga.toFixed(1)+'x';
-document.getElementById('id2').textContent=S.du+'с';
-let dt=document.getElementById('dot');if(R)dt.classList.add('rec');else dt.classList.remove('rec')}
+// ===== UI UPDATES =====
+function updStatus(text, cls) {
+  const st = document.getElementById('st');
+  st.textContent = text;
+  st.className = 'hdr-s ' + cls;
+}
 
-function uRB(){let b=document.getElementById('brec'),i=document.getElementById('ri'),t=document.getElementById('rt');
-if(R){b.className='br sp';i.innerHTML='&#9632;';t.textContent='Зупинити'}
-else{b.className='br st';i.innerHTML='&#127908;';t.textContent='Почати запис'}}
+function uUI() {
+  if (!R) {
+    updStatus('Готовий до роботи','off');
+  } else if (IC) {
+    updStatus('⏳ Cooldown...','cd');
+  } else if (CC2 < 50) {
+    updStatus('Калібрування ' + Math.round(CC2/50*100) + '%...','cd');
+  } else {
+    updStatus('Активний запис','on');
+  }
+  
+  document.getElementById('cnt').textContent = C;
+  const ci = document.getElementById('circ');
+  if (C > 0) { ci.classList.add('on'); document.getElementById('cnt').classList.add('red'); }
+  document.getElementById('dmg').textContent = '₴' + Math.round(D);
+  document.getElementById('dps').textContent = S.pr + ' ₴ за храп';
+  
+  const pct = Math.round(L * 100);
+  const lb = document.getElementById('lvl');
+  lb.textContent = pct + '%';
+  lb.className = 'glb ' + (L > S.th ? 'l' : 'n');
+  
+  document.getElementById('it').textContent = Math.round(S.th * 100) + '%';
+  document.getElementById('ig').textContent = S.ga.toFixed(1) + 'x';
+  document.getElementById('id2').textContent = S.du + 'с';
+  
+  const dt = document.getElementById('dot');
+  R ? dt.classList.add('rec') : dt.classList.remove('rec');
+}
 
-function oSet(){if(R){toast('Зупиніть запис спочатку','err');return}uSU();document.getElementById('mset').classList.add('vis')}
-function cSet(){document.getElementById('mset').classList.remove('vis')}
+function uRB() {
+  const b = document.getElementById('brec'), i = document.getElementById('ri'), t = document.getElementById('rt');
+  if (R) { b.className='br sp'; i.innerHTML='&#9632;'; t.textContent='Зупинити'; }
+  else { b.className='br st'; i.innerHTML='&#127908;'; t.textContent='Почати запис'; }
+}
 
-function uSU(){document.getElementById('st1').textContent=Math.round(S.th*100)+'%';
-document.getElementById('st2').textContent=S.pr+'₴';
-document.getElementById('st3').textContent=S.du+'с';
-document.getElementById('st4').textContent=S.ga.toFixed(1)+'x'}
+// ===== SETTINGS =====
+function oSet() { if(R){toast('Зупиніть запис спочатку','err');return} uSU(); document.getElementById('mset').classList.add('vis'); }
+function cSet() { document.getElementById('mset').classList.remove('vis'); }
+function uSU() {
+  document.getElementById('st1').textContent=Math.round(S.th*100)+'%';
+  document.getElementById('st2').textContent=S.pr+'₴';
+  document.getElementById('st3').textContent=S.du+'с';
+  document.getElementById('st4').textContent=S.ga.toFixed(1)+'x';
+}
+function aS(t,d){
+  switch(t){
+    case'th':S.th=Math.max(.01,Math.min(.50,+(S.th+d*.01).toFixed(2)));break;
+    case'pr':S.pr=Math.max(10,Math.min(500,S.pr+d));break;
+    case'du':S.du=Math.max(1,Math.min(5,S.du+d));break;
+    case'ga':S.ga=Math.max(1,Math.min(20,+(S.ga+d).toFixed(1)));break;
+  }
+  uSU();uUI();sS();
+}
+function rSet() { S={th:.04,pr:100,du:1,ga:10}; uSU(); uUI(); sS(); toast('Налаштування скинуті','inf'); }
+function rSt() { C=0;D=0;L=0;VH=[];SI=false;IC=false;ST=null; peakHold=0;
+  document.getElementById('circ').classList.remove('on'); document.getElementById('cnt').classList.remove('red'); uUI(); }
 
-function aS(t,d){switch(t){
-case'th':S.th=Math.max(.01,Math.min(.50,+(S.th+d*.01).toFixed(2)));break;
-case'pr':S.pr=Math.max(10,Math.min(500,S.pr+d));break;
-case'du':S.du=Math.max(1,Math.min(5,S.du+d));break;
-case'ga':S.ga=Math.max(1,Math.min(10,+(S.ga+d).toFixed(1)));break}
-uSU();uUI();sS()}
+// ===== DEBUG =====
+function tDb() { DV=!DV; document.getElementById('dp').classList.toggle('vis',DV); }
+function addDebug(tag, msg) {
+  const ts = new Date().toISOString().substring(11,19);
+  dbg.push(`${ts} [${tag}] ${msg}`);
+  if (dbg.length > 100) dbg.shift();
+  if (DV) {
+    const info = `raw:${(L*100).toFixed(1)}% bg:${(BG*100).toFixed(1)}% thr:${(S.th*100).toFixed(0)}% cd:${IC} prog:${SI}`;
+    document.getElementById('di').textContent = info;
+    const recent = dbg.slice(-8);
+    document.getElementById('dlog').textContent = recent.join('\n');
+    document.getElementById('dlc').textContent = 'logs: ' + dbg.length;
+  }
+}
 
-function rSet(){S={th:.04,pr:100,du:1,ga:10};uSU();uUI();sS();toast('Налаштування скинуті','inf')}
+// ===== TOAST =====
+function toast(m,t) {
+  const e = document.getElementById('tst');
+  e.textContent = m; e.className = 'toast ' + t;
+  void e.offsetWidth; e.classList.add('vis');
+  setTimeout(() => e.classList.remove('vis'), 3000);
+}
 
-function rSt(){C=0;D=0;L=0;VH=[];SI=false;IC=false;ST=null;
-document.getElementById('circ').classList.remove('on');document.getElementById('cnt').classList.remove('red');uUI()}
-
-function tDb(){DV=!DV;document.getElementById('dp').classList.toggle('vis',DV)}
-
-function aD(raw,adj){let ts=new Date().toISOString().substring(11,19);
-dbg.push(`${ts}|raw:${raw.toFixed(3)} bg:${BG.toFixed(3)} adj:${adj.toFixed(3)} thr:${S.th.toFixed(2)}`);
-if(dbg.length>50)dbg.shift();
-if(DV){document.getElementById('di').textContent=`raw:${Math.round(raw*100)}%|bg:${Math.round(BG*100)}%|thr:${Math.round(S.th*100)}%|cd:${IC}|prog:${SI}`;
-document.getElementById('dlog').textContent=dbg.slice(-5).join('\n');
-document.getElementById('dlc').textContent='logs:'+dbg.length}}
-
-function toast(m,t){let e=document.getElementById('tst');e.textContent=m;e.className='toast '+t;
-void e.offsetWidth;e.classList.add('vis');setTimeout(()=>e.classList.remove('vis'),2500)}
-
-document.addEventListener('DOMContentLoaded',init);
-document.addEventListener('touchmove',e=>{if(e.target.closest('.dbl')||e.target.closest('.mc'))return},{passive:true});
+document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('touchmove', e => {
+  if (e.target.closest('.dbl') || e.target.closest('.mc')) return;
+}, {passive: true});
 </script>
 </body>
 </html>
