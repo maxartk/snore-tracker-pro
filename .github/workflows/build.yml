@@ -2,7 +2,8 @@ name: Build APK
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -11,26 +12,44 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up Flutter
-      uses: subosito/flutter-action@v2
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
       with:
-        flutter-version: '3.29.0'
-        channel: 'stable'
+        node-version: '20'
     
-    - name: Install dependencies
-      run: flutter pub get
+    - name: Install Capacitor CLI and dependencies
+      run: |
+        npm install @capacitor/core @capacitor/cli @capacitor/android
+    
+    - name: Sync web assets to Android
+      run: npx cap sync android
+    
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+    
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
     
     - name: Build APK
-      run: flutter build apk --release
+      working-directory: android
+      run: ./gradlew assembleDebug
+    
+    - name: Rename APK
+      run: |
+        APK_PATH=$(find android/app/build/outputs/apk/debug -name '*.apk' | head -1)
+        cp "$APK_PATH" snore-omstr-debug.apk
     
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: snore-cost-apk
-        path: build/app/outputs/flutter-apk/app-release.apk
-        
-    - name: Create Release
-      uses: softprops/action-gh-release@v1
+        name: snore-omstr-apk
+        path: snore-omstr-debug.apk
+    
+    - name: Create Release on tag
+      uses: softprops/action-gh-release@v2
       if: startsWith(github.ref, 'refs/tags/')
       with:
-        files: build/app/outputs/flutter-apk/app-release.apk
+        files: snore-omstr-debug.apk

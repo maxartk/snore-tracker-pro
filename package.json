@@ -8,11 +8,16 @@
     "build": "npx cap sync android"
   },
   "dependencies": {
-    "@capacitor/android": "^6.0.0",
-    "@capacitor/cli": "^6.0.0",
-    "@capacitor/core": "^6.0.0"
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/cli": "^6.2.1",
+    "@capacitor/core": "^6.2.1"
   },
-  "keywords": ["snore", "tracker", "detector", "audio"],
+  "keywords": [
+    "snore",
+    "tracker",
+    "detector",
+    "audio"
+  ],
   "author": "maxartk",
   "license": "MIT"
 }
