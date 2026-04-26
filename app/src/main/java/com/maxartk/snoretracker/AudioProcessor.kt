@@ -35,7 +35,7 @@ data class SnoreSettings(
 
 class AudioProcessor(private val context: Context) {
 
-    private val _state = MutableStateFlow(SnoreState())
+    val _state = MutableStateFlow(SnoreState())
     val state: StateFlow<SnoreState> = _state
 
     val settings = SnoreSettings()
