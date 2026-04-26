@@ -1,0 +1,9 @@
+{
+  "appId": "com.maxartk.snoretracker",
+  "appName": "ХрапОмстр",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": false
+  }
+}

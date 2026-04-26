@@ -1,0 +1,18 @@
+{
+  "name": "snore-tracker-pro",
+  "version": "2.0.0",
+  "description": "ХрапОмстр — детектор хропіння з розрахунком шкоди",
+  "main": "www/index.html",
+  "scripts": {
+    "start": "npx cap serve",
+    "build": "npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/core": "^6.0.0"
+  },
+  "keywords": ["snore", "tracker", "detector", "audio"],
+  "author": "maxartk",
+  "license": "MIT"
+}
