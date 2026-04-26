@@ -10,46 +10,25 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-    
-    - name: Install Capacitor CLI and dependencies
-      run: |
-        npm install @capacitor/core @capacitor/cli @capacitor/android
-    
-    - name: Sync web assets to Android
-      run: npx cap sync android
-    
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-    
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v4
-    
-    - name: Build APK
-      working-directory: android
-      run: ./gradlew assembleDebug
-    
-    - name: Rename APK
-      run: |
-        APK_PATH=$(find android/app/build/outputs/apk/debug -name '*.apk' | head -1)
-        cp "$APK_PATH" snore-omstr-debug.apk
-    
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: snore-omstr-apk
-        path: snore-omstr-debug.apk
-    
-    - name: Create Release on tag
-      uses: softprops/action-gh-release@v2
-      if: startsWith(github.ref, 'refs/tags/')
-      with:
-        files: snore-omstr-debug.apk
+      - uses: actions/checkout@v4
+      
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+      
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug
+      
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: snoretracker-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
